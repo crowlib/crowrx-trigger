@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <PackageReference Include="CrowRx.Core" Version="1.0.12" />
+    <PackageReference Include="CrowRx.Pool" Version="1.0.6" />
+  </ItemGroup>
+</Project>

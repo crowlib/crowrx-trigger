@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Benchmark.cs" />
+    <Compile Include="EnumerationBenchmark.cs" />
+    <Compile Include="CapacityBenchmark.cs" />
+    <ProjectReference Include="../../CrowRx.Trigger.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>Loops.Baseline.Lifetime</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Lifetime/Program.cs" Link="Program.cs" />
+    <ProjectReference Include="../../Variants/Baseline/Baseline.csproj" />
+  </ItemGroup>
+</Project>

@@ -24,6 +24,68 @@ namespace CrowRx.Trigger
     {
         #region static
 
+        /// <summary>입력을 복사하고 전체 그래프를 검증하여 초기화되지 않은 기본 그룹을 만든다.</summary>
+        /// <remarks>
+        /// null 입력과 원소는 생략한다. 자식 참조와 순서는 유지하며 추가 훅 및 자식 초기화를 실행하지 않는다.
+        /// 실패하면 새 그룹을 반환하지 않는다. 입력 열거자의 외부 부수 효과는 되돌리지 않는다.
+        /// 파생 그룹을 생성하는 경로가 아니며 검사와 조건 변경은 동일한 실행 컨텍스트에서 호출한다.
+        /// </remarks>
+        public static ConditionGroup Create(
+            IEnumerable<ICondition>? conditions,
+            ConditionCombineType combineType = ConditionCombineType.And)
+        {
+            if (combineType != ConditionCombineType.And && combineType != ConditionCombineType.Or)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(combineType), combineType,
+                    "Unsupported condition combination type.");
+            }
+
+            List<ICondition> children;
+            if (conditions is ICondition[] conditionArray)
+            {
+                int count = 0;
+                foreach (ICondition condition in conditionArray)
+                {
+                    if (condition is not null)
+                    {
+                        ++count;
+                    }
+                }
+
+                children = new List<ICondition>(count);
+                foreach (ICondition condition in conditionArray)
+                {
+                    if (condition is not null)
+                    {
+                        children.Add(condition);
+                    }
+                }
+            }
+            else
+            {
+                children = new List<ICondition>();
+                if (conditions is not null)
+                {
+                    foreach (ICondition condition in conditions)
+                    {
+                        if (condition is not null)
+                        {
+                            children.Add(condition);
+                        }
+                    }
+                }
+            }
+
+            var group = new ConditionGroup
+            {
+                CombineType = combineType,
+                Conditions = children
+            };
+            group.ValidateConditionGraph();
+            return group;
+        }
+
         private static async Task ObserveCleanupAsync(Task cleanup)
         {
             try
@@ -313,6 +375,15 @@ namespace CrowRx.Trigger
         {
             if (conditions is null)
             {
+                return;
+            }
+
+            if (conditions is ICondition[] conditionArray)
+            {
+                foreach (ICondition condition in conditionArray)
+                {
+                    AddCondition(condition);
+                }
                 return;
             }
 

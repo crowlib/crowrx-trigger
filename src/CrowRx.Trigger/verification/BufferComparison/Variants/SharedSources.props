@@ -1,0 +1,15 @@
+<Project>
+  <ItemGroup>
+    <Compile Include="ConditionGroup.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../Condition.cs" Link="Library/Condition.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../ConditionGroupShareTarget.cs" Link="Library/ConditionGroupShareTarget.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../ICondition.cs" Link="Library/ICondition.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../IConditionTargetSharable.cs" Link="Library/IConditionTargetSharable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../IInitializer.cs" Link="Library/IInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../IListener.cs" Link="Library/IListener.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../IAsyncListener.cs" Link="Library/IAsyncListener.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../../Listener.cs" Link="Library/Listener.cs" />
+    <PackageReference Include="CrowRx.Core" Version="1.0.12" />
+    <PackageReference Include="CrowRx.Pool" Version="1.0.6" />
+  </ItemGroup>
+</Project>

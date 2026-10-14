@@ -1,0 +1,24 @@
+<Solution>
+  <Project Path="../CrowRx.Trigger.csproj" />
+  <Project Path="Lifetime/Lifetime.csproj" />
+  <Project Path="BoolPools/BoolPools.csproj" />
+  <Project Path="Performance/Performance.csproj" />
+  <Project Path="Construction/Construction.csproj" />
+  <Project Path="Creation/Creation.csproj" />
+  <Project Path="BufferComparison/Compare.csproj" />
+  <Folder Name="/Buffer variants/">
+    <Project Path="BufferComparison/Variants/Array/Array.csproj" />
+    <Project Path="BufferComparison/Variants/List/List.csproj" />
+  </Folder>
+  <Folder Name="/Loop comparison/">
+    <Project Path="LoopComparison/Compare.csproj" />
+    <Project Path="LoopComparison/Variants/Baseline/Baseline.csproj" />
+    <Project Path="LoopComparison/Variants/Fused/Fused.csproj" />
+  </Folder>
+  <Folder Name="/Loop comparison/Baseline tests/">
+    <Project Path="LoopComparison/Tests/Baseline/Lifetime.csproj" />
+  </Folder>
+  <Folder Name="/Loop comparison/Fused tests/">
+    <Project Path="LoopComparison/Tests/Fused/Lifetime.csproj" />
+  </Folder>
+</Solution>

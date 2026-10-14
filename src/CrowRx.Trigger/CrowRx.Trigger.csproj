@@ -34,6 +34,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Remove="verification/**/*.cs"/>
+        <EmbeddedResource Remove="verification/**/*"/>
+        <None Remove="verification/**/*"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <None Include="LICENSE" Pack="true" PackagePath=""/>
         <None Include="README.md" Pack="true" PackagePath=""/>
     </ItemGroup>

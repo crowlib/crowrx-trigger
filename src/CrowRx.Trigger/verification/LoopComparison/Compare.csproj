@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <ProjectReference Include="Variants/Baseline/Baseline.csproj" Aliases="B" />
+    <ProjectReference Include="Variants/Fused/Fused.csproj" Aliases="F" />
+  </ItemGroup>
+</Project>

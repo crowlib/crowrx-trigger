@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>CrowRx.Trigger.Loops.Fused</AssemblyName>
+  </PropertyGroup>
+  <Import Project="../../../BufferComparison/Variants/SharedSources.props" />
+</Project>
