@@ -1,0 +1,111 @@
+############################################
+# .NET / Visual Studio
+############################################
+
+# Build results
+bin/
+obj/
+[Bb]uild/
+[Bb]in/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache
+.vs/
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+############################################
+# NuGet
+############################################
+
+# Packages (restore on demand)
+packages/
+.nuget/
+
+# Generated NuGet packages
+*.nupkg
+*.snupkg
+
+# NuGet cache (local only)
+**/nupkg/
+
+############################################
+# Roslyn / Source Generator
+############################################
+
+# Generated analyzer artifacts
+AnalyzerReleases.Unshipped.md
+AnalyzerReleases.Shipped.md
+
+# Source generator outputs (if any)
+**/Generated/
+**/*.g.cs
+
+############################################
+# Unity (NuGetForUnity 연계 시)
+############################################
+
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+
+# Unity meta
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+
+############################################
+# OS
+############################################
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+############################################
+# Misc
+############################################
+
+# Backup / temp
+*.bak
+*.tmp
+*.orig
+
+############################################
+# Local review and benchmark artifacts
+############################################
+
+/*.proposal.md
+/performance-*.json
+/CodeReview.md
+/CHECKSESSION_BUFFERS_CHANGE.md
+/CHECK_LIFETIME_CHANGE.md
+/LISTENER_COMPLETION_CHANGE.md
+/NEXT_WORK.md
+/PERFORMANCE_OPPORTUNITIES.md
+/PERFORMANCE_REVIEW.md
+/PERFORMANCE_SOLUTIONS.md
+/REMAINING_REVIEW.md
+/UNITASK_REVIEW.md

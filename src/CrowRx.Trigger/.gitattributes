@@ -1,0 +1,51 @@
+############################################
+# Line endings
+############################################
+
+# Default to LF
+* text=auto eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+############################################
+# Source code
+############################################
+
+*.cs        text diff=csharp
+*.csproj   text
+*.props    text
+*.targets  text
+*.sln      text eol=crlf
+
+*.json     text
+*.xml      text
+*.yml      text
+*.yaml     text
+*.md       text
+
+############################################
+# NuGet / Packages
+############################################
+
+*.nupkg    binary
+*.snupkg  binary
+
+############################################
+# Unity
+############################################
+
+*.meta     text
+*.unity    text
+*.prefab  text
+*.asset   text
+*.asmdef  text
+
+############################################
+# Binary
+############################################
+
+*.dll      binary
+*.exe      binary
+*.pdb      binary
