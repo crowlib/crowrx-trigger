@@ -1,7 +1,7 @@
 {
   "name": "com.crowlib.crowrx-trigger",
   "version": "0.1.0",
-  "displayName": "CrowRx.Trigger.Unity",
+  "displayName": "CrowRx.Trigger",
   "description": "Unity integration for CrowRx.Trigger.",
   "unity": "6000.0",
   "license": "MIT",
