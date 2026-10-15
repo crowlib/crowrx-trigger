@@ -6,10 +6,11 @@ namespace CrowRx.Trigger.Unity
     [AddComponentMenu("CrowRx/Trigger/Active State Condition")]
     public sealed class ActiveStateConditionBehaviour : ConditionBehaviour
     {
-        [SerializeField] private ActiveStateConditionDefinition _settings = new ActiveStateConditionDefinition();
+        [SerializeField] private ActiveStateConditionDefinition settings = new();
+
         /// <summary>활성 상태 조건의 편집 설정이다.</summary>
-        public ActiveStateConditionDefinition Settings => _settings;
+        public ActiveStateConditionDefinition Settings => settings;
         /// <inheritdoc/>
-        public override ConditionDefinition Definition => _settings;
+        public override ConditionDefinition Definition => settings;
     }
 }

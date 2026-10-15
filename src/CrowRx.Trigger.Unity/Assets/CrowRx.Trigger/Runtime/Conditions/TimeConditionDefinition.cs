@@ -16,15 +16,15 @@ namespace CrowRx.Trigger.Unity
     [Serializable, ConditionMenu("시간 경과")]
     public sealed class TimeConditionDefinition : ConditionDefinition
     {
-        [SerializeField, Min(0)] private float _duration = 1f;
-        [SerializeField] private ConditionTimeSource _timeSource;
-        [SerializeField] private bool _isNot;
+        [SerializeField, Min(0)] private float duration = 1f;
+        [SerializeField] private ConditionTimeSource timeSource;
+        [SerializeField] private bool isNot;
         /// <summary>기다릴 초 단위 시간이다. 0 이상인 유한한 값을 지정한다.</summary>
-        public float Duration { get => _duration; set => _duration = value; }
+        public float Duration { get => duration; set => duration = value; }
         /// <summary>게임 시간 또는 실제 시간을 가져오거나 설정한다.</summary>
-        public ConditionTimeSource TimeSource { get => _timeSource; set => _timeSource = value; }
+        public ConditionTimeSource TimeSource { get => timeSource; set => timeSource = value; }
         /// <summary>만족 결과를 반전할지 가져오거나 설정한다.</summary>
-        public bool IsNot { get => _isNot; set => _isNot = value; }
+        public bool IsNot { get => isNot; set => isNot = value; }
         /// <inheritdoc/>
         protected override ICondition CreateRuntimeCondition() => new RuntimeTimeCondition(Duration, TimeSource, IsNot);
 

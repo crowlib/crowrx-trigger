@@ -21,13 +21,14 @@ namespace CrowRx.Trigger.Unity
     [AddComponentMenu("CrowRx/Trigger/Trigger Listener")]
     public sealed class TriggerListenerBehaviour : MonoBehaviour, IAsyncListener
     {
-        [SerializeField] private ListenerStartMode _startMode;
-        [SerializeField] private bool _isOneShot;
-        [SerializeField] private bool _ignoreInvalidCondition;
-        [SerializeField] private ConditionCombineType _combineType;
-        [SerializeReference] private List<ConditionDefinition> _conditions = new List<ConditionDefinition>();
-        [SerializeField] private UnityEvent _onSuccess = new UnityEvent();
-        [SerializeField] private UnityEvent<string> _onError = new UnityEvent<string>();
+        [SerializeField] private ListenerStartMode startMode;
+        [SerializeField] private bool isOneShot;
+        [SerializeField] private bool ignoreInvalidCondition;
+        [SerializeField] private ConditionCombineType combineType;
+        [SerializeReference] private List<ConditionDefinition> conditions = new();
+        [SerializeField] private UnityEvent onSuccess = new();
+        [SerializeField] private UnityEvent<string> onError = new();
+
         private Listener _listener;
         private bool _destroyed;
 
@@ -36,25 +37,25 @@ namespace CrowRx.Trigger.Unity
         /// <summary>실행이나 이벤트 처리 중 발생한 원래 예외를 코드에서 구독한다.</summary>
         public event Action<Exception> Exception;
         /// <summary>직렬화할 조건 설정 목록이다. 최초 초기화 이후 변경은 실행 트리에 반영되지 않는다.</summary>
-        public List<ConditionDefinition> Conditions => _conditions;
+        public List<ConditionDefinition> Conditions => conditions;
         /// <summary>루트 항목이 여러 개일 때 사용할 결합 방식이다.</summary>
-        public ConditionCombineType CombineType { get => _combineType; set { EnsureNotBuilt(); _combineType = value; } }
+        public ConditionCombineType CombineType { get => combineType; set { EnsureNotBuilt(); combineType = value; } }
         /// <summary>자동 시작 시점이다. 수동 시작도 항상 사용할 수 있다.</summary>
-        public ListenerStartMode StartMode { get => _startMode; set { EnsureNotBuilt(); _startMode = value; } }
+        public ListenerStartMode StartMode { get => startMode; set { EnsureNotBuilt(); startMode = value; } }
         /// <summary>인스펙터에서 연결할 성공 이벤트다.</summary>
-        public UnityEvent OnSuccess => _onSuccess;
+        public UnityEvent OnSuccess => onSuccess;
         /// <summary>인스펙터에서 연결할 오류 메시지 이벤트다.</summary>
-        public UnityEvent<string> OnError => _onError;
+        public UnityEvent<string> OnError => onError;
         /// <inheritdoc/>
         public bool IsInitialized => _listener != null && _listener.IsInitialized;
         /// <inheritdoc/>
         public ICondition Condition => _listener?.Condition;
         /// <summary>오류 알림 없이 유효하지 않은 조건의 구독을 끝낼지 나타낸다.</summary>
         public bool IsIgnoreNotAvailableCondition
-        { get => _listener?.IsIgnoreNotAvailableCondition ?? _ignoreInvalidCondition; set { EnsureNotBuilt(); _ignoreInvalidCondition = value; } }
+        { get => _listener?.IsIgnoreNotAvailableCondition ?? ignoreInvalidCondition; set { EnsureNotBuilt(); ignoreInvalidCondition = value; } }
         /// <summary>성공 후 자동으로 다시 시작하지 않을지 나타낸다.</summary>
         public bool IsOneShot
-        { get => _listener?.IsOneShot ?? _isOneShot; set { EnsureNotBuilt(); _isOneShot = value; } }
+        { get => _listener?.IsOneShot ?? isOneShot; set { EnsureNotBuilt(); isOneShot = value; } }
 
         /// <summary>설정을 실행 트리로 복사하고 기존 Listener를 한 번 초기화한다.</summary>
         /// <exception cref="InvalidOperationException">설정이 잘못됐거나 컴포넌트가 파괴됐다.</exception>
@@ -63,11 +64,11 @@ namespace CrowRx.Trigger.Unity
             if (_destroyed) throw new InvalidOperationException("The listener component has been destroyed.");
             if (_listener == null)
             {
-                var root = ConditionTree.CreateRoot(_conditions, _combineType);
+                var root = ConditionTree.CreateRoot(conditions, combineType);
                 _listener = new UnityListener(root)
                 {
-                    IsOneShot = _isOneShot,
-                    IsIgnoreNotAvailableCondition = _ignoreInvalidCondition
+                    IsOneShot = isOneShot,
+                    IsIgnoreNotAvailableCondition = ignoreInvalidCondition
                 };
                 _listener.Success += ForwardSuccess;
                 _listener.Exception += ForwardException;
@@ -100,8 +101,8 @@ namespace CrowRx.Trigger.Unity
         {
             if (_listener != null) throw new InvalidOperationException("Listener settings are fixed after initialization.");
         }
-        private void OnEnable() { if (_startMode == ListenerStartMode.OnEnable) StartListen(); }
-        private void Start() { if (_startMode == ListenerStartMode.Start) StartListen(); }
+        private void OnEnable() { if (startMode == ListenerStartMode.OnEnable) StartListen(); }
+        private void Start() { if (startMode == ListenerStartMode.Start) StartListen(); }
         private void OnDisable() => StopListen();
         private void OnDestroy()
         {
@@ -124,14 +125,14 @@ namespace CrowRx.Trigger.Unity
         private void ForwardSuccess()
         {
             if (_destroyed) return;
-            _onSuccess.Invoke();
+            onSuccess.Invoke();
             if (!_destroyed) Success?.Invoke();
         }
         private void ForwardException(Exception error)
         {
             if (_destroyed) return;
             Debug.LogException(error, this);
-            try { _onError.Invoke(error.Message); }
+            try { onError.Invoke(error.Message); }
             catch (Exception handlerError) { Debug.LogException(handlerError, this); }
             if (Exception == null) return;
             foreach (Action<Exception> handler in Exception.GetInvocationList())

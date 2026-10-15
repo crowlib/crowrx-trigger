@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace CrowRx.Trigger.Unity.Editor
 {

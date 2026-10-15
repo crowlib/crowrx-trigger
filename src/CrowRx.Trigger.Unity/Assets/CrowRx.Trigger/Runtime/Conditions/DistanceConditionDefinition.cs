@@ -7,18 +7,18 @@ namespace CrowRx.Trigger.Unity
     [Serializable, ConditionMenu("거리")]
     public sealed class DistanceConditionDefinition : ConditionDefinition
     {
-        [SerializeField] private Transform _origin;
-        [SerializeField] private GameObject _target;
-        [SerializeField, Min(0)] private float _maxDistance = 5f;
-        [SerializeField] private bool _isNot;
+        [SerializeField] private Transform origin;
+        [SerializeField] private GameObject target;
+        [SerializeField, Min(0)] private float maxDistance = 5f;
+        [SerializeField] private bool isNot;
         /// <summary>거리의 기준점이다. 리스너의 위치로 자동 대체하지 않는다.</summary>
-        public Transform Origin { get => _origin; set => _origin = value; }
+        public Transform Origin { get => origin; set => origin = value; }
         /// <summary>거리를 검사할 타겟이다. 공유 그룹은 실행 객체의 이 값을 대체한다.</summary>
-        public GameObject Target { get => _target; set => _target = value; }
+        public GameObject Target { get => target; set => target = value; }
         /// <summary>만족으로 판정할 최대 거리다. 경계값을 포함하며 0 이상인 유한한 값을 지정한다.</summary>
-        public float MaxDistance { get => _maxDistance; set => _maxDistance = value; }
+        public float MaxDistance { get => maxDistance; set => maxDistance = value; }
         /// <summary>거리 판정을 반전할지 가져오거나 설정한다.</summary>
-        public bool IsNot { get => _isNot; set => _isNot = value; }
+        public bool IsNot { get => isNot; set => isNot = value; }
         /// <inheritdoc/>
         protected override ICondition CreateRuntimeCondition() => new RuntimeDistanceCondition(Origin, Target, MaxDistance, IsNot);
 

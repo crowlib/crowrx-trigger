@@ -7,12 +7,12 @@ namespace CrowRx.Trigger.Unity
     [Serializable, ConditionMenu("활성 상태")]
     public sealed class ActiveStateConditionDefinition : ConditionDefinition
     {
-        [SerializeField] private GameObject _target;
-        [SerializeField] private bool _isNot;
+        [SerializeField] private GameObject target;
+        [SerializeField] private bool isNot;
         /// <summary>검사할 GameObject다. 공유 그룹에 속하면 실행 객체에 그룹 타겟이 적용된다.</summary>
-        public GameObject Target { get => _target; set => _target = value; }
+        public GameObject Target { get => target; set => target = value; }
         /// <summary>비활성 상태를 검사하도록 만족 결과를 반전할지 가져오거나 설정한다.</summary>
-        public bool IsNot { get => _isNot; set => _isNot = value; }
+        public bool IsNot { get => isNot; set => isNot = value; }
         /// <inheritdoc/>
         protected override ICondition CreateRuntimeCondition() => new RuntimeActiveCondition(Target, IsNot);
 

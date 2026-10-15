@@ -194,13 +194,13 @@ namespace CrowRx.Trigger.Unity.Tests
             var listener = instance.GetComponent<TriggerListenerBehaviour>();
             AssertMixed(listener);
             var serialized = new SerializedObject(listener);
-            serialized.FindProperty("_conditions").GetArrayElementAtIndex(0).FindPropertyRelative("_duration").floatValue = 9;
+            serialized.FindProperty("conditions").GetArrayElementAtIndex(0).FindPropertyRelative("duration").floatValue = 9;
             serialized.ApplyModifiedProperties();
             Assert.That(PrefabUtility.HasPrefabInstanceAnyOverrides(instance, false), Is.True);
             PrefabUtility.RevertPrefabInstance(instance, InteractionMode.AutomatedAction);
             Assert.That(((TimeConditionDefinition)listener.Conditions[0]).Duration, Is.EqualTo(2));
             serialized.Update();
-            serialized.FindProperty("_conditions").MoveArrayElement(0, 1);
+            serialized.FindProperty("conditions").MoveArrayElement(0, 1);
             serialized.ApplyModifiedProperties();
             PrefabUtility.ApplyPrefabInstance(instance, InteractionMode.AutomatedAction);
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<TriggerListenerBehaviour>();
@@ -217,7 +217,7 @@ namespace CrowRx.Trigger.Unity.Tests
             try
             {
                 var serialized = new SerializedObject(listener);
-                var array = serialized.FindProperty("_conditions");
+                var array = serialized.FindProperty("conditions");
                 array.MoveArrayElement(0, 1);
                 serialized.ApplyModifiedProperties();
                 Undo.FlushUndoRecordObjects();
@@ -226,13 +226,13 @@ namespace CrowRx.Trigger.Unity.Tests
                 Assert.That(listener.Conditions[0], Is.InstanceOf<TimeConditionDefinition>());
                 Undo.PerformRedo();
                 Assert.That(listener.Conditions[0], Is.InstanceOf<ComponentConditionReference>());
-                serialized.Update(); array = serialized.FindProperty("_conditions");
+                serialized.Update(); array = serialized.FindProperty("conditions");
                 array.arraySize++;
                 array.GetArrayElementAtIndex(3).managedReferenceValue = new TimeConditionDefinition();
                 serialized.ApplyModifiedProperties(); Undo.FlushUndoRecordObjects();
                 Assert.That(listener.Conditions.Count, Is.EqualTo(4));
                 Undo.PerformUndo(); Assert.That(listener.Conditions.Count, Is.EqualTo(3));
-                serialized.Update(); array = serialized.FindProperty("_conditions");
+                serialized.Update(); array = serialized.FindProperty("conditions");
                 var source = ((ComponentConditionReference)listener.Conditions[0]).Component;
                 array.DeleteArrayElementAtIndex(0); serialized.ApplyModifiedProperties();
                 Assert.That(source, Is.Not.Null);
@@ -249,9 +249,9 @@ namespace CrowRx.Trigger.Unity.Tests
             nested.Conditions.Add(new ActiveStateConditionDefinition());
             shared.Conditions.Add(nested);
             var serialized = new SerializedObject(listener);
-            var array = serialized.FindProperty("_conditions");
+            var array = serialized.FindProperty("conditions");
             for (int i = 0; i < array.arraySize; i++) array.GetArrayElementAtIndex(i).isExpanded = true;
-            var children = array.GetArrayElementAtIndex(2).FindPropertyRelative("_conditions");
+            var children = array.GetArrayElementAtIndex(2).FindPropertyRelative("conditions");
             for (int i = 0; i < children.arraySize; i++) children.GetArrayElementAtIndex(i).isExpanded = true;
             _editor = UnityEditor.Editor.CreateEditor(listener);
             Assert.That(_editor.GetType().Name, Is.EqualTo("TriggerListenerEditor"));

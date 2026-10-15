@@ -47,7 +47,7 @@ namespace CrowRx.Trigger.Unity.Editor
             if (!layout) { _root.Add(new HelpBox("인스펙터 레이아웃을 불러올 수 없어.", HelpBoxMessageType.Error)); return; }
             layout.CloneTree(_root);
             var context = new InspectorContext(serializedObject, _root, Build);
-            var conditions = serializedObject.FindProperty("_conditions");
+            var conditions = serializedObject.FindProperty("conditions");
             var combine = _root.Q<PropertyField>("combineType");
             combine.EnableInClassList("condition-hidden", conditions.arraySize < 2);
             ConditionEditorGUI.AddList(_root.Q("conditions"), conditions, context);
@@ -83,7 +83,7 @@ namespace CrowRx.Trigger.Unity.Editor
             var directory = InspectorAssets.Directory;
             var sheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(directory + "/CrowRxTriggerInspector.uss");
             if (sheet) _root.styleSheets.Add(sheet);
-            var settings = serializedObject.FindProperty("_settings");
+            var settings = serializedObject.FindProperty("settings");
             if (settings != null) ConditionEditorGUI.AddDefinition(_root, settings, new InspectorContext(serializedObject, _root, Build));
             else InspectorElement.FillDefaultInspector(_root, serializedObject, this);
             _root.Bind(serializedObject);

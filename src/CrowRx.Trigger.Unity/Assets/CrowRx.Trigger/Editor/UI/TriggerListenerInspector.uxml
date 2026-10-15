@@ -2,18 +2,18 @@
     <ui:Style src="CrowRxTriggerInspector.uss" />
     <ui:VisualElement class="trigger-inspector">
         <ui:Foldout text="실행 설정" value="true">
-            <uie:PropertyField binding-path="_startMode" label="시작 시점" />
-            <uie:PropertyField binding-path="_isOneShot" label="성공 후 종료 · 한 번만 실행" />
+            <uie:PropertyField binding-path="startMode" label="시작 시점" />
+            <uie:PropertyField binding-path="isOneShot" label="성공 후 종료 · 한 번만 실행" />
             <ui:Label text="OnDisable: 중지 요청 · OnDestroy: 정리 요청" class="condition-note" />
         </ui:Foldout>
         <ui:Label text="조건 목록" class="condition-heading" />
-        <uie:PropertyField name="combineType" binding-path="_combineType" label="결합 방식" />
+        <uie:PropertyField name="combineType" binding-path="combineType" label="결합 방식" />
         <ui:VisualElement name="conditions" />
         <ui:VisualElement name="validation" />
-        <uie:PropertyField binding-path="_onSuccess" label="성공 시 실행" />
-        <uie:PropertyField binding-path="_onError" label="오류 발생 시 실행" />
+        <uie:PropertyField binding-path="onSuccess" label="성공 시 실행" />
+        <uie:PropertyField binding-path="onError" label="오류 발생 시 실행" />
         <ui:Foldout text="고급 설정" value="false">
-            <uie:PropertyField binding-path="_ignoreInvalidCondition" label="유효하지 않은 조건의 오류 알림 생략" />
+            <uie:PropertyField binding-path="ignoreInvalidCondition" label="유효하지 않은 조건의 오류 알림 생략" />
         </ui:Foldout>
     </ui:VisualElement>
 </ui:UXML>

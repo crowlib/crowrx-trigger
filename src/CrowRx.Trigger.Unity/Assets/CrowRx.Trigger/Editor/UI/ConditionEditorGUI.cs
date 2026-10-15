@@ -139,23 +139,23 @@ namespace CrowRx.Trigger.Unity.Editor
                 : (property.serializedObject.targetObject as ConditionBehaviour)?.Definition;
             if (definition is ConditionGroupDefinition group)
             {
-                AddField(host, property.FindPropertyRelative("_combineType"), "결합 방식");
-                AddField(host, property.FindPropertyRelative("_isNot"), "NOT · 결과 반전");
+                AddField(host, property.FindPropertyRelative("combineType"), "결합 방식");
+                AddField(host, property.FindPropertyRelative("isNot"), "NOT · 결과 반전");
                 var childrenTarget = default(SharedTargetPreview);
                 if (group is SharedTargetGroupDefinition shared)
                 {
-                    AddTarget(host, property.FindPropertyRelative("_target"), inherited, context);
+                    AddTarget(host, property.FindPropertyRelative("target"), inherited, context);
                     childrenTarget = new SharedTargetPreview(inherited.Inherited ? inherited.Target : shared.Target);
                 }
                 var children = new VisualElement();
                 children.AddToClassList("condition-children");
                 host.Add(children);
-                AddList(children, property.FindPropertyRelative("_conditions"), context, childrenTarget);
+                AddList(children, property.FindPropertyRelative("conditions"), context, childrenTarget);
                 return;
             }
             if (definition is ComponentConditionReference)
             {
-                var reference = property.FindPropertyRelative("_component");
+                var reference = property.FindPropertyRelative("component");
                 var field = new ObjectField("조건 컴포넌트") { objectType = typeof(ConditionBehaviour), allowSceneObjects = true };
                 field.SetValueWithoutNotify(reference.objectReferenceValue);
                 field.BindProperty(reference);
@@ -177,11 +177,11 @@ namespace CrowRx.Trigger.Unity.Editor
             {
                 if (SerializedProperty.EqualContents(child, end)) break;
                 if (child.depth != property.depth + 1) continue;
-                if (child.name == "_target" && (definition is ActiveStateConditionDefinition || definition is DistanceConditionDefinition))
+                if (child.name == "target" && (definition is ActiveStateConditionDefinition || definition is DistanceConditionDefinition))
                     AddTarget(host, child.Copy(), inherited, context);
                 else AddField(host, child.Copy(), Label(child.name));
             } while (child.NextVisible(false));
-            if (property.FindPropertyRelative("_origin") is SerializedProperty origin && !origin.objectReferenceValue)
+            if (property.FindPropertyRelative("origin") is SerializedProperty origin && !origin.objectReferenceValue)
                 host.Add(new HelpBox("거리의 기준점을 직접 지정해. 리스너 위치로 자동 대체하지 않아.", HelpBoxMessageType.Warning));
         }
 
@@ -189,11 +189,11 @@ namespace CrowRx.Trigger.Unity.Editor
         {
             switch (name)
             {
-                case "_duration": return "대기 시간 (초)";
-                case "_timeSource": return "시간 기준";
-                case "_origin": return "기준점";
-                case "_maxDistance": return "최대 거리 (m)";
-                case "_isNot": return "NOT · 결과 반전";
+                case "duration": return "대기 시간 (초)";
+                case "timeSource": return "시간 기준";
+                case "origin": return "기준점";
+                case "maxDistance": return "최대 거리 (m)";
+                case "isNot": return "NOT · 결과 반전";
                 default: return ObjectNames.NicifyVariableName(name);
             }
         }
