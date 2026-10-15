@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Linq;
+using CrowRx.Pool.Collections;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -110,6 +111,50 @@ namespace CrowRx.Trigger.Unity.Tests
             Assert.Throws<InvalidOperationException>(() => group.CreateCondition());
             group.Conditions.Clear(); group.Conditions.Add(null);
             Assert.Throws<InvalidOperationException>(() => group.CreateCondition());
+            group.Conditions.Clear(); group.Conditions.Add(new TimeConditionDefinition());
+            var recovered = (ConditionGroup)group.CreateCondition();
+            Assert.That(recovered.Conditions.Count, Is.EqualTo(1));
+            Assert.That(recovered.IsValid, Is.True);
+            Assert.That(group.CreateCondition(), Is.Not.SameAs(recovered));
+        }
+
+        [Test]
+        public void DragResolutionPreservesMixedInputOrder()
+        {
+            var first = MakeObject("First").AddComponent<TimeConditionBehaviour>();
+            var second = MakeObject("Second").AddComponent<ActiveStateConditionBehaviour>();
+            var multiple = MakeObject("Multiple");
+            var explicitComponent = multiple.AddComponent<DistanceConditionBehaviour>();
+            multiple.AddComponent<TimeConditionBehaviour>();
+
+            Assert.That(ResolveDragged(first.gameObject, second.gameObject, explicitComponent),
+                Is.EqualTo(new ConditionBehaviour[] { first, second, explicitComponent }));
+        }
+
+        [Test]
+        public void DragResolutionRejectsInvalidInputAndRecoversForNextDrag()
+        {
+            var valid = MakeObject("Valid").AddComponent<TimeConditionBehaviour>();
+            var missing = MakeObject("No Condition");
+            var multiple = MakeObject("Multiple");
+            multiple.AddComponent<TimeConditionBehaviour>();
+            multiple.AddComponent<ActiveStateConditionBehaviour>();
+
+            Assert.That(ResolveDragged(), Is.Null);
+            Assert.That(ResolveDragged(valid, missing), Is.Null);
+            Assert.That(ResolveDragged(valid, valid.transform), Is.Null);
+            Assert.That(ResolveDragged(valid, multiple), Is.Null);
+            Assert.That(ResolveDragged(valid.gameObject), Is.EqualTo(new[] { valid }));
+        }
+
+        private static ConditionBehaviour[] ResolveDragged(params Object[] items)
+        {
+            var assembly = AppDomain.CurrentDomain.GetAssemblies()
+                .Single(x => x.GetName().Name == "CrowRx.Trigger.Unity.Editor");
+            var type = assembly.GetType("CrowRx.Trigger.Unity.Editor.ConditionDropManipulator", true);
+            var resolve = type.GetMethod("TryResolve", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            using PooledList<ConditionBehaviour> result = ListPool<ConditionBehaviour>.Get();
+            return (bool)resolve.Invoke(null, new object[] { items, result }) ? result.ToArray() : null;
         }
 
         [Test]

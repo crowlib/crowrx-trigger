@@ -10,6 +10,7 @@ namespace CrowRx.Trigger.Unity
 
         /// <summary>기준점과 타겟을 포함한 거리 조건의 편집 설정이다.</summary>
         public DistanceConditionDefinition Settings => settings;
+
         /// <inheritdoc/>
         public override ConditionDefinition Definition => settings;
     }

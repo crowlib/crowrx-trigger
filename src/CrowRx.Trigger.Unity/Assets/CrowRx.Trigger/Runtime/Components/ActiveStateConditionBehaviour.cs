@@ -10,6 +10,7 @@ namespace CrowRx.Trigger.Unity
 
         /// <summary>활성 상태 조건의 편집 설정이다.</summary>
         public ActiveStateConditionDefinition Settings => settings;
+
         /// <inheritdoc/>
         public override ConditionDefinition Definition => settings;
     }

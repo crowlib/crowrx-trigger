@@ -13,9 +13,19 @@ namespace CrowRx.Trigger.Unity
         [SerializeReference] private List<ConditionDefinition> conditions = new List<ConditionDefinition>();
 
         /// <summary>자식을 결합할 AND 또는 OR를 가져오거나 설정한다.</summary>
-        public ConditionCombineType CombineType { get => combineType; set => combineType = value; }
+        public ConditionCombineType CombineType
+        {
+            get => combineType;
+            set => combineType = value;
+        }
+
         /// <summary>그룹 결과를 반전할지 가져오거나 설정한다.</summary>
-        public bool IsNot { get => isNot; set => isNot = value; }
+        public bool IsNot
+        {
+            get => isNot;
+            set => isNot = value;
+        }
+
         /// <summary>인스펙터에 저장할 자식 설정 목록이다. 생성한 실행 트리에는 변경이 반영되지 않는다.</summary>
         public List<ConditionDefinition> Conditions => conditions;
 
@@ -26,8 +36,12 @@ namespace CrowRx.Trigger.Unity
         /// <returns>새 자식 조건 목록이다.</returns>
         protected List<ICondition> BuildChildren()
         {
-            var children = new List<ICondition>(conditions.Count);
-            foreach (var definition in conditions) children.Add(definition.Build());
+            List<ICondition> children = new(conditions.Count);
+            foreach (ConditionDefinition definition in conditions)
+            {
+                children.Add(definition.Build());
+            }
+
             return children;
         }
     }
@@ -37,8 +51,14 @@ namespace CrowRx.Trigger.Unity
     public sealed class SharedTargetGroupDefinition : ConditionGroupDefinition
     {
         [SerializeField] private GameObject target;
+
         /// <summary>자식에게 전달할 타겟이다. 같은 타입의 하위 공유 그룹에도 부모 값이 전달된다.</summary>
-        public GameObject Target { get => target; set => target = value; }
+        public GameObject Target
+        {
+            get => target;
+            set => target = value;
+        }
+
         /// <inheritdoc/>
         protected override ICondition CreateRuntimeCondition() => new RuntimeSharedGroup(BuildChildren(), CombineType, IsNot, Target);
     }
@@ -48,8 +68,14 @@ namespace CrowRx.Trigger.Unity
     public sealed class ComponentConditionReference : ConditionDefinition
     {
         [SerializeField] private ConditionBehaviour component;
+
         /// <summary>설정을 제공할 조건 컴포넌트를 가져오거나 설정한다.</summary>
-        public ConditionBehaviour Component { get => component; set => component = value; }
+        public ConditionBehaviour Component
+        {
+            get => component;
+            set => component = value;
+        }
+
         /// <inheritdoc/>
         protected override ICondition CreateRuntimeCondition() => Component.Definition.Build();
     }

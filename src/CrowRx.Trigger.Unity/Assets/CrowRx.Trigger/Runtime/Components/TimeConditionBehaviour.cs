@@ -10,6 +10,7 @@ namespace CrowRx.Trigger.Unity
 
         /// <summary>시간 조건의 편집 설정이다. 이미 생성한 실행 조건에는 변경이 반영되지 않는다.</summary>
         public TimeConditionDefinition Settings => settings;
+
         /// <inheritdoc/>
         public override ConditionDefinition Definition => settings;
     }
