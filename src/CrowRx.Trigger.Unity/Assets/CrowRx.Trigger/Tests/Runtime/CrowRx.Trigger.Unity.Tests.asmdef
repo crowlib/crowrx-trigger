@@ -1,0 +1,7 @@
+{
+  "name": "CrowRx.Trigger.Unity.Tests",
+  "references": ["CrowRx.Trigger.Unity", "UnityEngine.TestRunner"],
+  "overrideReferences": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "autoReferenced": false
+}

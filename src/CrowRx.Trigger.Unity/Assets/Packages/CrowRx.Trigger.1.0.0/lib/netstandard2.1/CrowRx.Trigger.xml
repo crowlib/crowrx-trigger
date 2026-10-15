@@ -1,0 +1,341 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>CrowRx.Trigger</name>
+    </assembly>
+    <members>
+        <member name="T:CrowRx.Trigger.Condition">
+            <summary>
+            초기화와 활성화 수명 주기를 관리하는 조건의 기본 구현이다.
+            </summary>
+            <remarks>파생 클래스에서 검사와 만족 여부를 구현한다. <see cref="P:CrowRx.Trigger.Condition.IsNot"/>의 반전도 파생 클래스에서 반영한다.</remarks>
+        </member>
+        <member name="P:CrowRx.Trigger.Condition.IsValid">
+            <inheritdoc/>
+        </member>
+        <member name="P:CrowRx.Trigger.Condition.IsInitialized">
+            <inheritdoc/>
+        </member>
+        <member name="P:CrowRx.Trigger.Condition.IsActivated">
+            <inheritdoc/>
+        </member>
+        <member name="P:CrowRx.Trigger.Condition.IsNot">
+            <summary>만족 결과를 반전할지 가져오거나 파생 클래스에서 설정한다. 기본값은 false다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.Condition.IsSatisfied">
+            <inheritdoc/>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.Initialize">
+            <inheritdoc/>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.Activate">
+            <summary>조건을 활성화한다. 활성화에 실패하면 비활성화를 시도한 뒤 원래 오류를 전달한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.Deactivate">
+            <inheritdoc/>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.CheckAsync(System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.OnInitialize">
+            <summary>최초 초기화에 필요한 설정을 수행한다. 실패하면 다음 초기화 호출에서 다시 시도한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.OnActivate">
+            <summary>활성화에 필요한 자원을 준비한다. 호출 시점의 활성화 상태는 true다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Condition.OnDeactivate">
+            <summary>활성화 중 사용한 자원을 정리한다. 호출 시점의 활성화 상태는 false다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ConditionCombineType">
+            <summary>그룹의 자식 조건을 결합하는 방식을 나타낸다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCombineType.And">
+            <summary>모든 자식이 만족해야 그룹을 만족한다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCombineType.Or">
+            <summary>하나 이상의 자식이 만족하면 그룹을 만족한다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ConditionGroup">
+            <summary>
+            여러 조건을 AND 또는 OR로 결합하고 자식 검사의 수명을 관리한다.
+            </summary>
+            <remarks>
+            다른 그룹의 자식으로 중첩할 수 있다. 비어 있거나 유효하지 않은 자식이 하나라도 있으면 유효하지 않다.
+            검사와 조건 변경은 같은 실행 컨텍스트에서 호출하며, 같은 트리에서 조건 인스턴스를 중복 사용하지 않는다.
+            </remarks>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.Create(System.Collections.Generic.IEnumerable{CrowRx.Trigger.ICondition},CrowRx.Trigger.ConditionCombineType)">
+            <summary>입력을 복사하고 전체 그래프를 검증하여 초기화되지 않은 기본 그룹을 만든다.</summary>
+            <param name="conditions">복사할 자식 조건이다. null 입력과 최상위의 null 원소는 생략한다.</param>
+            <param name="combineType">자식 조건의 결합 방식이다.</param>
+            <returns>자식 참조와 순서를 유지하는 새 기본 그룹이다. 초기화와 활성화는 수행하지 않는다.</returns>
+            <remarks>
+            null 입력과 원소는 생략한다. 자식 참조와 순서는 유지하며 추가 훅 및 자식 초기화를 실행하지 않는다.
+            실패하면 새 그룹을 반환하지 않는다. 입력 열거자의 외부 부수 효과는 되돌리지 않는다.
+            파생 그룹을 생성하는 경로가 아니며 검사와 조건 변경은 동일한 실행 컨텍스트에서 호출한다.
+            </remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">지원하지 않는 결합 방식을 지정했다.</exception>
+            <exception cref="T:System.InvalidOperationException">중복 인스턴스, 순환 참조 또는 중첩 그룹의 null 자식이 있다.</exception>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionGroup.IsValid">
+            <summary>자식이 하나 이상 있고 모든 자식이 유효한지 확인한다. 순환 조회는 false로 처리한다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionGroup.IsSatisfied">
+            <summary>목록이 있으면 결합 방식과 <see cref="P:CrowRx.Trigger.Condition.IsNot"/>의 반전을 적용한 만족 결과를 반환한다.</summary>
+            <remarks>
+            유효성은 따로 확인한다. null 목록은 true이며, 빈 목록은 AND에서 true, OR에서 false를 반전 여부에 따라 반환한다.
+            </remarks>
+            <exception cref="T:System.InvalidOperationException">만족 여부를 조회하는 중 순환 참조가 발견됐다.</exception>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionGroup.Conditions">
+            <summary>그룹의 자식 조건 목록을 가져오거나 파생 클래스에서 설정한다.</summary>
+            <remarks>활성화 및 검사 중에는 목록을 변경하지 않는다. 추가에는 AddCondition 또는 AddConditions를 사용한다.</remarks>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionGroup.CombineType">
+            <summary>자식 조건의 결합 방식을 가져오거나 파생 클래스에서 설정한다. 기본값은 AND다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.AddCondition(CrowRx.Trigger.ICondition)">
+            <summary>조건을 추가한다. 추가 콜백 중 같은 그룹의 재귀 추가는 허용하지 않는다.</summary>
+            <param name="condition">추가할 조건이다. null이면 아무 작업도 하지 않는다.</param>
+            <remarks>부모가 초기화되어 있으면 새 자식만 초기화한다. 추가 훅이나 초기화의 외부 부수 효과는 실패 시 되돌리지 않는다.</remarks>
+            <exception cref="T:System.InvalidOperationException">그룹이 활성화 또는 검사 중이거나, 재진입 또는 잘못된 조건 그래프가 발견됐다.</exception>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.AddConditions(System.Collections.Generic.IEnumerable{CrowRx.Trigger.ICondition}@)">
+            <summary>입력 순서대로 조건을 하나씩 추가한다.</summary>
+            <param name="conditions">추가할 조건이다. null 입력과 null 원소는 생략한다.</param>
+            <remarks>각 조건에 AddCondition을 호출한다. 중간에 실패해도 앞서 추가한 조건은 유지한다. 자신의 Conditions 목록을 입력으로 전달하지 않는다.</remarks>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.CheckAsync(System.Threading.CancellationToken)">
+            <summary>
+            자식 검사의 완료를 알린다. 호출 사이에 새로 완료된 검사는 재시작하기 전에 먼저 알린다.
+            같은 토큰으로 다시 호출하면 미완료 검사는 유지하고, 이미 완료를 알린 검사만 다시 시작한다.
+            조건 목록은 검사 종료 전까지 유지해야 한다. 직접 사용하는 경우 사용 종료 시 StopChecksAsync를 기다린다.
+            활성화했던 그룹은 검사 정리 후 Deactivate를 호출한다.
+            </summary>
+            <param name="cancellationToken">검사 세션을 중지할 토큰이다. 다른 토큰을 전달하면 이전 세션을 정리하고 시작한다.</param>
+            <returns>새 자식 검사 완료를 관찰하면 완료되는 작업이다. 그룹의 만족 여부는 IsSatisfied에서 확인한다.</returns>
+            <exception cref="T:System.InvalidOperationException">검사를 동시에 호출했거나, 조건 그래프 또는 진행 중인 목록이 잘못됐다.</exception>
+            <exception cref="T:System.OperationCanceledException">검사 취소가 요청됐다.</exception>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.StopChecksAsync">
+            <summary>현재 자식 및 중첩 그룹 검사에 취소를 요청하고 모든 검사 정리를 기다린다.</summary>
+            <remarks>
+            Activate 없이 시작한 검사도 정리한다. 활성화 상태는 유지하므로 비활성화가 필요하면 완료 후 Deactivate를 호출한다.
+            중복 종료 요청은 같은 세션의 정리를 기다리며, 정리 실패는 반환한 Task로 전달한다.
+            시작, 종료 및 조건 변경은 동일한 실행 컨텍스트에서 호출한다.
+            </remarks>
+            <returns>남아 있는 검사와 중첩 그룹의 정리가 끝나면 완료되는 작업이다. 정리 오류는 이 작업으로 전달한다.</returns>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.OnConditionAdding(CrowRx.Trigger.ICondition)">
+            <summary>자식을 목록에 추가하고 초기화하기 전에 필요한 설정을 전달한다.</summary>
+            <param name="condition">추가할 자식 조건이다.</param>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.EnsureChecksAreStopped">
+            <summary>실행 중인 검사에 사용되는 조건 설정의 변경을 거부한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.ValidateConditionGraph(CrowRx.Trigger.ICondition)">
+            <summary>같은 인스턴스의 중복, 순환 참조 및 null 자식 조건을 검사한다.</summary>
+            <param name="additionalCondition">추가를 가정하고 함께 검사할 조건이다. null이면 현재 그래프만 검사한다.</param>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.OnInitialize">
+            <summary>전체 조건 그래프를 검증한 뒤 자식들을 초기화한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.OnActivate">
+            <summary>전체 조건 그래프를 검증한 뒤 유효한 자식들을 활성화한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroup.OnDeactivate">
+            <summary>검사 정리를 요청하고 모든 자식의 비활성화를 시도한다. 비동기 정리 완료는 기다리지 않는다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ConditionGroupShareTarget`1">
+            <summary>같은 대상 형식을 사용하는 자식 조건에 대상을 전달하는 그룹이다.</summary>
+            <typeparam name="TTarget">자식과 공유할 대상의 형식이다.</typeparam>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionGroupShareTarget`1.Target">
+            <summary>자식에게 공유할 대상을 가져오거나 설정한다. 전달에 실패하면 이전 값을 복구한다.</summary>
+            <remarks>활성화와 검사가 모두 끝난 뒤 변경한다. 복구에도 실패하면 원래 오류와 복구 오류를 함께 전달한다.</remarks>
+            <exception cref="T:System.InvalidOperationException">그룹이 활성화 또는 검사 중이거나, 잘못된 그래프 또는 대상 변경 재진입이 발견됐다.</exception>
+            <exception cref="T:System.AggregateException">대상 전달과 이전 값 복구가 모두 실패했다.</exception>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroupShareTarget`1.OnConditionAdding(CrowRx.Trigger.ICondition)">
+            <summary>새 자식의 대상 형식이 같으면 초기화 전에 그룹의 대상을 전달한다.</summary>
+            <param name="condition">추가할 자식 조건이다.</param>
+        </member>
+        <member name="M:CrowRx.Trigger.ConditionGroupShareTarget`1.OnInitialize">
+            <summary>조건 그래프를 검증하고 대상을 전달한 뒤 자식들을 초기화한다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.IAsyncListener">
+            <summary>구독의 종료 완료를 비동기로 기다릴 수 있는 리스너를 나타낸다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.IAsyncListener.StopListenAsync">
+            <summary>현재 구독을 중지하고 검사 정리 및 비활성화가 끝날 때까지 기다린다.</summary>
+            <returns>현재 구독의 종료가 끝나면 완료되는 작업이다. 예약된 다음 구독의 종료는 기다리지 않는다.</returns>
+        </member>
+        <member name="T:CrowRx.Trigger.ConditionState">
+            <summary>
+            리스너가 조건을 확인한 결과를 나타낸다.
+            </summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionState.NotYet">
+            <summary>
+            만족 여부가 확정되지 않았거나 검사가 취소된 상태다.
+            </summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionState.NotAvailable">
+            <summary>
+            조건 확인 중 오류가 발생한 상태다.
+            </summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionState.Satisfied">
+            <summary>
+            조건을 만족한 상태다.
+            </summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ICondition">
+            <summary>
+            트리거 조건의 상태와 비동기 검사를 제공한다.
+            </summary>
+            <remarks>상태 조회와 수명 주기 호출은 같은 실행 컨텍스트에서 수행한다.</remarks>
+        </member>
+        <member name="P:CrowRx.Trigger.ICondition.IsValid">
+            <summary>
+            현재 조건을 검사할 수 있는지 확인한다.
+            </summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ICondition.IsNot">
+            <summary>
+            원래 조건의 만족 결과를 반전하는지 확인한다.
+            </summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ICondition.IsSatisfied">
+            <summary>
+            현재 조건을 만족하는지 확인한다. 반전 여부도 이 결과에 반영한다.
+            </summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ICondition.IsActivated">
+            <summary>
+            조건이 활성화되어 있는지 확인한다.
+            </summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ICondition.Activate">
+            <summary>
+            조건을 활성화한다. 이미 활성화했다면 다시 수행하지 않는다.
+            </summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ICondition.Deactivate">
+            <summary>
+            조건을 비활성화한다. 이미 비활성화했다면 다시 수행하지 않는다.
+            </summary>
+        </member>
+        <member name="M:CrowRx.Trigger.ICondition.CheckAsync(System.Threading.CancellationToken)">
+            <summary>조건을 비동기로 검사하고 현재 상태를 갱신한다.</summary>
+            <param name="cancellationToken">검사 중지를 요청할 토큰이다.</param>
+            <returns>이번 검사가 끝나면 완료되는 작업이다. 완료 자체가 조건 만족을 뜻하지는 않는다.</returns>
+            <remarks>
+            완료 후 <see cref="P:CrowRx.Trigger.ICondition.IsSatisfied"/>를 조회한다. null 작업을 반환하지 않으며,
+            취소 요청 시 진행 중인 작업을 정리하고 종료해야 리스너와 그룹도 중지를 마칠 수 있다.
+            </remarks>
+        </member>
+        <member name="T:CrowRx.Trigger.IConditionTargetSharable`1">
+            <summary>외부에서 전달받은 대상을 사용하는 조건을 나타낸다.</summary>
+            <typeparam name="TTarget">조건이 사용할 대상의 형식이다.</typeparam>
+        </member>
+        <member name="P:CrowRx.Trigger.IConditionTargetSharable`1.Target">
+            <summary>조건이 사용할 대상을 가져오거나 설정한다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.IInitializer">
+            <summary>사용 전에 한 번 초기화할 수 있는 객체를 나타낸다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.IInitializer.IsInitialized">
+            <summary>
+            초기화를 성공적으로 마쳤는지 확인한다.
+            </summary>
+        </member>
+        <member name="M:CrowRx.Trigger.IInitializer.Initialize">
+            <summary>
+            사용에 필요한 상태를 초기화한다. 이미 초기화했다면 다시 수행하지 않는다.
+            </summary>
+        </member>
+        <member name="T:CrowRx.Trigger.IListener">
+            <summary>조건을 검사하고 만족했을 때 동작을 실행하는 구독을 관리한다.</summary>
+            <remarks>시작, 중지, 즉시 확인은 같은 실행 컨텍스트에서 호출한다.</remarks>
+        </member>
+        <member name="P:CrowRx.Trigger.IListener.Condition">
+            <summary>구독할 조건을 가져온다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.IListener.IsIgnoreNotAvailableCondition">
+            <summary>조건이 없거나 유효하지 않을 때 오류 알림 없이 구독을 끝낼지 확인한다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.IListener.IsOneShot">
+            <summary>조건을 한 번 만족한 뒤 자동으로 다시 구독하지 않을지 확인한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.IListener.StartListen">
+            <summary>구독을 시작한다. 종료 중이라면 정리가 끝난 뒤 시작하도록 예약한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.IListener.StopListen">
+            <summary>구독 중지를 요청한다. 비동기 정리의 완료까지 기다리지는 않는다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.IListener.CheckConditionsImmediately">
+            <summary>현재 만족 여부를 동기적으로 확인한다. 만족하거나 조건이 유효하지 않으면 구독 중지를 요청한다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.Listener">
+            <summary>
+            조건을 반복 검사하고 만족하면 <see cref="E:CrowRx.Trigger.Listener.Success"/> 이벤트를 발생시킨다.
+            </summary>
+            <remarks>
+            시작, 중지, 조건 변경은 같은 실행 컨텍스트에서 호출한다.
+            성공 후에는 이전 검사 정리와 비활성화를 마친 뒤 다시 구독하며, 오류나 유효하지 않은 조건으로 종료하면 자동 재시작하지 않는다.
+            </remarks>
+        </member>
+        <member name="E:CrowRx.Trigger.Listener.Success">
+            <summary>조건을 만족했을 때 호출한다. 핸들러에서 예외가 발생하면 나머지 성공 핸들러와 자동 재시작은 진행하지 않는다.</summary>
+        </member>
+        <member name="E:CrowRx.Trigger.Listener.Exception">
+            <summary>검사, 이벤트 처리, 종료 정리 중 발생한 오류를 알린다. 한 핸들러가 실패해도 다른 오류 핸들러는 호출한다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.Listener.IsInitialized">
+            <inheritdoc/>
+        </member>
+        <member name="P:CrowRx.Trigger.Listener.Condition">
+            <summary>구독할 조건을 가져온다. 파생 클래스에서 재정의할 때 구독 중에는 같은 조건을 유지한다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.Listener.IsIgnoreNotAvailableCondition">
+            <summary>조건이 없거나 유효하지 않을 때 오류 알림 없이 종료할지 가져오거나 설정한다. 기본값은 false다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.Listener.IsOneShot">
+            <summary>조건을 한 번 만족한 뒤 자동 재시작하지 않을지 가져오거나 설정한다. 기본값은 false다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.#ctor">
+            <summary>파생 클래스에서 조건을 제공할 리스너를 만든다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.#ctor(CrowRx.Trigger.ICondition)">
+            <summary>지정한 조건을 구독할 리스너를 만든다.</summary>
+            <param name="condition">구독할 조건이다.</param>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.Initialize">
+            <summary>리스너와 조건을 한 번 초기화한다. 시작과 즉시 확인 시에도 자동으로 호출한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.StartListen">
+            <summary>구독을 시작한다. 구독 중이면 유지하고, 종료 중이면 정리 후 한 번 시작하도록 예약한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.StopListen">
+            <summary>구독 중지를 요청하고 재시작 예약을 취소한다. 이후 시작을 요청하면 정리 완료 뒤 실행한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.StopListenAsync">
+            <summary>
+            중지를 요청하고 현재 구독의 검사 정리, 비활성화 및 실행 상태 해제를 기다린다.
+            정리 실패는 Exception 이벤트로 전달한다. 별도로 예약한 다음 구독의 종료는 기다리지 않는다.
+            </summary>
+            <returns>현재 구독의 실행 상태가 해제되면 완료되는 작업이다. 구독 중이 아니면 이미 완료된 작업이다.</returns>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.CheckConditionsImmediately">
+            <summary>현재 만족 여부를 동기적으로 확인하고, 만족하면 성공 이벤트를 호출한다.</summary>
+            <remarks>
+            비동기 검사를 실행하지 않는다. 만족, 유효하지 않은 조건 또는 오류가 발생하면 구독 중지를 요청한다.
+            자동 재시작과 <see cref="P:CrowRx.Trigger.Listener.IsOneShot"/> 설정은 적용하지 않으며, 반복 호출하면 성공 이벤트도 다시 호출할 수 있다.
+            </remarks>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.OnInitialize">
+            <summary>기본 오류 로그 핸들러를 등록한다. 재정의할 때 기본 로그도 사용하려면 base 구현을 호출한다.</summary>
+        </member>
+    </members>
+</doc>

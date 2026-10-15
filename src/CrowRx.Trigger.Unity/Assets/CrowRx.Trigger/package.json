@@ -1,0 +1,15 @@
+{
+  "name": "com.crowlib.crowrx-trigger",
+  "version": "0.1.0",
+  "displayName": "CrowRx.Trigger.Unity",
+  "description": "Unity integration for CrowRx.Trigger.",
+  "unity": "6000.0",
+  "license": "MIT",
+  "author": {
+    "name": "newhory"
+  },
+  "dependencies": {
+    "com.cysharp.r3": "1.3.1",
+    "com.cysharp.unitask": "2.5.11"
+  }
+}

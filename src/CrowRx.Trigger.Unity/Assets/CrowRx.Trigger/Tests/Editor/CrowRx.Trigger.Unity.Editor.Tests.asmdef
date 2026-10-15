@@ -1,0 +1,8 @@
+{
+  "name": "CrowRx.Trigger.Unity.Editor.Tests",
+  "references": ["CrowRx.Trigger.Unity", "CrowRx.Trigger.Unity.Editor", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "autoReferenced": false
+}

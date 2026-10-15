@@ -1,0 +1,10 @@
+.trigger-inspector { padding-right: 2px; }
+.condition-heading { -unity-font-style: bold; margin-top: 8px; margin-bottom: 4px; }
+.condition-note { white-space: normal; margin-top: 3px; margin-bottom: 6px; }
+.condition-list { margin-bottom: 4px; }
+.condition-row { flex-direction: row; align-items: flex-start; padding-top: 3px; padding-bottom: 3px; }
+.condition-foldout { flex-grow: 1; flex-shrink: 1; }
+.condition-remove { width: 25px; margin-left: 4px; }
+.condition-add { margin-top: 4px; margin-bottom: 6px; }
+.condition-children { margin-left: 8px; margin-top: 4px; }
+.condition-hidden { display: none; }

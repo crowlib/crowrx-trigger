@@ -1,0 +1,54 @@
+# Unity caches and local state
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/MemoryCaptures/
+/ProfilerCaptures/
+
+# Build and exported package output
+/[Bb]uild/
+/[Bb]uilds/
+*.unitypackage
+*.apk
+*.aab
+
+# IDE caches and generated project files
+/.vs/
+/.vscode/
+/.idea/
+/*.csproj
+/*.unityproj
+/*.sln
+/*.slnx
+/*.slnf
+/*.pidb
+/*.booproj
+/*.svd
+*.csproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Local diagnostics and crash reports
+/Recordings/
+/sysinfo.txt
+/crashlytics-build.properties
+*.stackdump
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.bak
+*~
+
+# Keep Assets (including .meta files and imported NuGet DLLs),
+# Packages manifests/lockfiles, embedded packages and ProjectSettings in Git.
