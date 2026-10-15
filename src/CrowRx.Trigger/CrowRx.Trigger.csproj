@@ -4,9 +4,10 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
         <!-- NuGet -->
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <VersionPrefix>1.0.0</VersionPrefix>
 
         <!-- Native 방지 -->
@@ -22,8 +23,7 @@
         <Authors>newhory</Authors>
         <Description>A Trigger utility library for CrowRx. This package is intended for use with Unity3D 6.0 or newer only.</Description>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>$(VersionPrefix)</Version>
+        <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <AssemblyTitle>CrowRx.Trigger</AssemblyTitle>
         <RepositoryType>git</RepositoryType>
     </PropertyGroup>
@@ -41,7 +41,7 @@
 
     <ItemGroup>
         <None Include="LICENSE" Pack="true" PackagePath=""/>
-        <None Include="README.md" Pack="true" PackagePath=""/>
+        <None Update="Readme.md" Pack="true" PackagePath=""/>
     </ItemGroup>
 
 </Project>

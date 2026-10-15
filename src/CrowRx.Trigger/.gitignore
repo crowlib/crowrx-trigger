@@ -99,16 +99,6 @@ Desktop.ini
 
 /*.proposal.md
 /performance-*.json
-/CodeReview.md
-/CHECKSESSION_BUFFERS_CHANGE.md
-/CHECK_LIFETIME_CHANGE.md
-/LISTENER_COMPLETION_CHANGE.md
-/NEXT_WORK.md
-/PERFORMANCE_OPPORTUNITIES.md
-/PERFORMANCE_REVIEW.md
-/PERFORMANCE_SOLUTIONS.md
-/REMAINING_REVIEW.md
-/UNITASK_REVIEW.md
 
 # Generated verification results
 /verification/results/

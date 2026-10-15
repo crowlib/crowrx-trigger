@@ -4,6 +4,8 @@ using CrowRx.Pool.Collections;
 
 namespace CrowRx.Trigger
 {
+    /// <summary>같은 대상 형식을 사용하는 자식 조건에 대상을 전달하는 그룹이다.</summary>
+    /// <typeparam name="TTarget">자식과 공유할 대상의 형식이다.</typeparam>
     public class ConditionGroupShareTarget<TTarget> : ConditionGroup, IConditionTargetSharable<TTarget>
     {
         private TTarget? _target;
@@ -21,7 +23,10 @@ namespace CrowRx.Trigger
             }
         }
 
-        /// <summary>자식에게 공유할 대상. 전달 실패 시 이전 값을 복구하고, 복구 실패도 함께 전달한다.</summary>
+        /// <summary>자식에게 공유할 대상을 가져오거나 설정한다. 전달에 실패하면 이전 값을 복구한다.</summary>
+        /// <remarks>활성화와 검사가 모두 끝난 뒤 변경한다. 복구에도 실패하면 원래 오류와 복구 오류를 함께 전달한다.</remarks>
+        /// <exception cref="InvalidOperationException">그룹이 활성화 또는 검사 중이거나, 잘못된 그래프 또는 대상 변경 재진입이 발견됐다.</exception>
+        /// <exception cref="AggregateException">대상 전달과 이전 값 복구가 모두 실패했다.</exception>
         public virtual TTarget? Target
         {
             get => _target;
@@ -33,19 +38,24 @@ namespace CrowRx.Trigger
             }
         }
 
+        /// <summary>새 자식의 대상 형식이 같으면 초기화 전에 그룹의 대상을 전달한다.</summary>
+        /// <param name="condition">추가할 자식 조건이다.</param>
         protected override void OnConditionAdding(ICondition condition)
         {
             if (_settingTarget)
             {
                 throw new InvalidOperationException("Conditions cannot be added during a target update.");
             }
+
             if (condition is IConditionTargetSharable<TTarget> conditionTargetSharable)
             {
                 conditionTargetSharable.Target = Target;
             }
+
             base.OnConditionAdding(condition);
         }
 
+        /// <summary>조건 그래프를 검증하고 대상을 전달한 뒤 자식들을 초기화한다.</summary>
         protected override void OnInitialize()
         {
             ValidateConditionGraph();
@@ -62,6 +72,7 @@ namespace CrowRx.Trigger
             }
 
             _settingTarget = true;
+
             try
             {
                 if (Conditions is null || Conditions.Count == 0)
@@ -69,9 +80,10 @@ namespace CrowRx.Trigger
                     _target = value;
                     return;
                 }
+
                 using PooledList<TargetSnapshot> snapshots = ListPool<TargetSnapshot>.Get();
-                using PooledList<(IConditionTargetSharable<TTarget> Condition, int SnapshotEnd)> children =
-                    ListPool<(IConditionTargetSharable<TTarget> Condition, int SnapshotEnd)>.Get();
+                using PooledList<(IConditionTargetSharable<TTarget> Condition, int SnapshotEnd)> children = ListPool<(IConditionTargetSharable<TTarget> Condition, int SnapshotEnd)>.Get();
+
                 if (Conditions is not null)
                 {
                     using PooledList<ICondition> conditions = ListPool<ICondition>.Get(Conditions);
@@ -88,9 +100,10 @@ namespace CrowRx.Trigger
                 TTarget? previousTarget = _target;
                 int restoreCount = 0;
                 _target = value;
+
                 try
                 {
-                    foreach (var child in children)
+                    foreach ((IConditionTargetSharable<TTarget> Condition, int SnapshotEnd) child in children)
                     {
                         // Setter가 값을 변경한 뒤 실패해도 해당 자식의 이전 상태를 복구한다.
                         restoreCount = child.SnapshotEnd;
@@ -100,11 +113,15 @@ namespace CrowRx.Trigger
                 catch (Exception updateError)
                 {
                     _target = previousTarget;
+
                     List<Exception>? failures = null;
                     for (int i = 0; i < restoreCount; ++i)
                     {
                         TargetSnapshot snapshot = snapshots[i];
-                        try { snapshot.Condition.Target = snapshot.Target; }
+                        try
+                        {
+                            snapshot.Condition.Target = snapshot.Target;
+                        }
                         catch (Exception restoreError)
                         {
                             failures ??= new List<Exception> { updateError };
@@ -116,6 +133,7 @@ namespace CrowRx.Trigger
                     {
                         throw new AggregateException("Target update failed and one or more previous targets could not be restored.", failures);
                     }
+
                     throw;
                 }
             }
@@ -129,6 +147,7 @@ namespace CrowRx.Trigger
         {
             using PooledStack<ICondition> pending = StackPool<ICondition>.Get();
             pending.Push(condition);
+
             while (pending.Count > 0)
             {
                 ICondition current = pending.Pop();
