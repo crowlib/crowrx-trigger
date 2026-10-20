@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>CrowRx.Trigger</id>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <title>CrowRx.Trigger</title>
     <authors>newhory</authors>
     <license type="file">LICENSE</license>
@@ -10,7 +10,7 @@
     <readme>Readme.md</readme>
     <description>A Trigger utility library for CrowRx. This package is intended for use with Unity3D 6.0 or newer only.</description>
     <tags>unity unity-editor</tags>
-    <repository type="git" commit="8df2992cb2fb00006708055926364645d8c32ad6" />
+    <repository type="git" commit="969de595b21a8d4913497ec4e718f788958f56fd" />
     <dependencies>
       <group targetFramework=".NETStandard2.1">
         <dependency id="CrowRx.Core" version="1.0.12" exclude="Build,Analyzers" />

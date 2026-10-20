@@ -46,6 +46,48 @@
         <member name="M:CrowRx.Trigger.Condition.OnDeactivate">
             <summary>활성화 중 사용한 자원을 정리한다. 호출 시점의 활성화 상태는 false다.</summary>
         </member>
+        <member name="T:CrowRx.Trigger.ConditionCheckState">
+            <summary>최근 관찰한 검사 Task의 상태다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCheckState.Unknown">
+            <summary>검사를 아직 관찰하지 않았다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCheckState.Pending">
+            <summary>검사 Task의 완료를 기다리고 있다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCheckState.Completed">
+            <summary>검사 Task가 정상 완료됐다. 조건 만족을 뜻하지는 않는다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCheckState.Canceled">
+            <summary>검사 Task가 취소됐다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ConditionCheckState.Faulted">
+            <summary>검사 Task에서 오류를 관찰했다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ConditionDiagnostic">
+            <summary>정상 실행 중 관찰한 조건 정보의 복사본이다. 현재 조건을 다시 평가한 결과는 아니다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.ExecutionId">
+            <summary>정보를 기록한 Execution ID다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.Path">
+            <summary>실행 중 조건 순서에 따른 경로다. 영구 에셋 식별자는 아니다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.RuntimeType">
+            <summary>실행 조건의 runtime type 이름이다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.IsValid">
+            <summary>최근 유효성 판정이다. 관찰하지 않았으면 null이다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.IsSatisfied">
+            <summary>최근 만족 판정이다. 단락 평가 등으로 관찰하지 않았으면 null이다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.CheckState">
+            <summary>최근 검사 Task 상태다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ConditionDiagnostic.LastError">
+            <summary>이 위치에서 관찰한 마지막 오류다. 없으면 null이다.</summary>
+        </member>
         <member name="T:CrowRx.Trigger.ConditionCombineType">
             <summary>그룹의 자식 조건을 결합하는 방식을 나타낸다.</summary>
         </member>
@@ -295,6 +337,22 @@
         <member name="P:CrowRx.Trigger.Listener.IsInitialized">
             <inheritdoc/>
         </member>
+        <member name="P:CrowRx.Trigger.Listener.CurrentExecution">
+            <summary>현재 검사 또는 정리 중인 Execution이다. Idle이면 null이다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.Listener.LastResult">
+            <summary>마지막으로 종료한 Execution의 결과다. 새로운 실행을 시작해도 다음 종료까지 유지한다.</summary>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.AcquireDiagnostics">
+            <summary>상세 Condition 진단을 요청한다. 초기화나 실행을 시작하지 않는다.</summary>
+            <returns>요청을 해제할 때 Dispose할 객체다. 마지막 요청이 해제되면 상세 기록을 중단한다.</returns>
+        </member>
+        <member name="M:CrowRx.Trigger.Listener.CopyConditionDiagnostics(System.Collections.Generic.List{CrowRx.Trigger.ConditionDiagnostic})">
+            <summary>저장된 Condition 진단을 복사한다. 조건을 다시 평가하지 않는다.</summary>
+            <param name="destination">먼저 비운 뒤 진단 정보의 복사본을 채울 목록이다.</param>
+            <returns>복사한 항목 수다. 현재 실행이 있으면 그 실행만, Idle이면 마지막 실행만 복사한다.</returns>
+            <exception cref="T:System.ArgumentNullException">목록이 null이다.</exception>
+        </member>
         <member name="P:CrowRx.Trigger.Listener.Condition">
             <summary>구독할 조건을 가져온다. 파생 클래스에서 재정의할 때 구독 중에는 같은 조건을 유지한다.</summary>
         </member>
@@ -317,6 +375,11 @@
         <member name="M:CrowRx.Trigger.Listener.StartListen">
             <summary>구독을 시작한다. 구독 중이면 유지하고, 종료 중이면 정리 후 한 번 시작하도록 예약한다.</summary>
         </member>
+        <member name="M:CrowRx.Trigger.Listener.StartExecution">
+            <summary>새 조건 감시를 시작하고 해당 Execution을 반환한다.</summary>
+            <returns>이번 감시의 결과와 Cleanup 완료를 기다릴 핸들이다. 자동 반복은 IsOneShot 설정을 따른다.</returns>
+            <exception cref="T:System.InvalidOperationException">이미 실행 중이거나 Cleanup 중이다.</exception>
+        </member>
         <member name="M:CrowRx.Trigger.Listener.StopListen">
             <summary>구독 중지를 요청하고 재시작 예약을 취소한다. 이후 시작을 요청하면 정리 완료 뒤 실행한다.</summary>
         </member>
@@ -332,10 +395,127 @@
             <remarks>
             비동기 검사를 실행하지 않는다. 만족, 유효하지 않은 조건 또는 오류가 발생하면 구독 중지를 요청한다.
             자동 재시작과 <see cref="P:CrowRx.Trigger.Listener.IsOneShot"/> 설정은 적용하지 않으며, 반복 호출하면 성공 이벤트도 다시 호출할 수 있다.
+            Execution은 만들지 않는다. 진행 중인 Execution을 중지했다면 그 Execution은 일반 취소 규칙을 따르며,
+            이 동기 호출의 Success를 해당 Execution의 Satisfied 결과로 기록하지 않는다.
             </remarks>
         </member>
         <member name="M:CrowRx.Trigger.Listener.OnInitialize">
             <summary>기본 오류 로그 핸들러를 등록한다. 재정의할 때 기본 로그도 사용하려면 base 구현을 호출한다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ListenerExecutionState">
+            <summary>한 번의 조건 감시가 진행 중인 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerExecutionState.Initializing">
+            <summary>리스너와 조건을 초기화하거나 활성화하고 있다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerExecutionState.Checking">
+            <summary>조건을 검사하고 있다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerExecutionState.Stopping">
+            <summary>중지 또는 종료를 위해 남은 검사를 정리하고 있다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerExecutionState.Completed">
+            <summary>정리와 비활성화까지 종료했다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ListenerResultKind">
+            <summary>한 번의 조건 감시가 종료된 이유다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerResultKind.Satisfied">
+            <summary>조건을 만족해 성공 알림을 시작했다. callback이나 정리 오류는 별도로 확인한다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerResultKind.Canceled">
+            <summary>성공 알림 전에 중지됐다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerResultKind.Unavailable">
+            <summary>조건이 없거나 유효하지 않아 종료했다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerResultKind.Faulted">
+            <summary>초기화, 활성화 또는 검사 중 오류로 종료했다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ListenerErrorPhase">
+            <summary>리스너가 오류를 관찰한 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Initialization">
+            <summary>초기화 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Activation">
+            <summary>조건 활성화 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Validation">
+            <summary>유효성 판정 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Check">
+            <summary>비동기 검사 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Satisfaction">
+            <summary>만족 여부 판정 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.SuccessCallback">
+            <summary>성공 callback 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.ExceptionCallback">
+            <summary>오류 callback 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Cancellation">
+            <summary>취소 요청 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Cleanup">
+            <summary>남은 검사 정리 단계다.</summary>
+        </member>
+        <member name="F:CrowRx.Trigger.ListenerErrorPhase.Deactivation">
+            <summary>조건 비활성화 단계다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ListenerError">
+            <summary>실행에서 관찰한 원래 오류와 위치다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerError.Exception">
+            <summary>관찰한 원래 예외다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerError.Phase">
+            <summary>오류를 관찰한 단계다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerError.ConditionPath">
+            <summary>확인한 조건 경로다. 위치를 알 수 없거나 조건 외부 오류면 null이다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ListenerResult">
+            <summary>정리까지 끝난 한 Execution의 결과다. 별도로 시작한 비동기 작업의 결과는 포함하지 않는다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerResult.ExecutionId">
+            <summary>이 리스너에서 실행한 Execution ID다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerResult.Kind">
+            <summary>종료 이유다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerResult.ConditionSatisfied">
+            <summary>정상 검사에서 만족 판정을 관찰했는지 나타낸다. 성공 알림 전에 취소됐다면 Kind는 Canceled일 수 있다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerResult.HasErrors">
+            <summary>callback이나 정리를 포함해 관찰한 오류가 있는지 나타낸다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerResult.Errors">
+            <summary>관찰 순서대로 고정된 오류 목록이다. Satisfied 결과에도 오류가 있을 수 있다.</summary>
+        </member>
+        <member name="T:CrowRx.Trigger.ListenerExecution">
+            <summary>특정 조건 감시 한 번을 가리키는 핸들이다. 완료 후에도 다른 실행을 가리키지 않는다.</summary>
+            <remarks>상태 조회는 리스너와 같은 실행 컨텍스트에서 한다. Completion은 여러 호출자가 기다릴 수 있다.</remarks>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerExecution.Id">
+            <summary>리스너별로 증가하는 Execution ID다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerExecution.State">
+            <summary>현재 실행 단계다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerExecution.RestartRequested">
+            <summary>정리 뒤 명시적인 재시작이 예약됐는지 나타낸다. 자동 반복 여부와는 별개다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerExecution.ConditionSatisfied">
+            <summary>정상 검사에서 만족 판정을 관찰했는지 나타낸다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerExecution.LastError">
+            <summary>이 실행에서 가장 최근에 관찰한 오류다. 아직 없으면 null이다.</summary>
+        </member>
+        <member name="P:CrowRx.Trigger.ListenerExecution.Completion">
+            <summary>검사 정리와 비활성화 뒤 고정된 Result로 완료된다. 실행 오류와 취소는 Task 예외 대신 Result로 전달한다.</summary>
         </member>
     </members>
 </doc>
