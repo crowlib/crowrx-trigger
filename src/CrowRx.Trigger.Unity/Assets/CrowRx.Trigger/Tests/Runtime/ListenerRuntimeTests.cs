@@ -204,6 +204,150 @@ namespace CrowRx.Trigger.Unity.Tests
             yield return Drain(listener.StopListenAsync());
         }
 
+        [UnityTest]
+        public IEnumerator ExecutionHandleSeparatesRapidRestartAndWaitsForDisableCleanup()
+        {
+            var counts = new Counts();
+            var listener = MakeListener(new CountingDefinition(counts));
+            Assert.Throws<InvalidOperationException>(() => listener.StartExecution());
+            Assert.That(listener.IsInitialized, Is.False);
+            using IDisposable diagnostics = listener.AcquireDiagnostics();
+            listener.gameObject.SetActive(true);
+            ListenerExecution first = listener.StartExecution();
+            Assert.Throws<InvalidOperationException>(() => listener.StartExecution());
+            Assert.That(listener.PreparationError, Is.Null);
+            listener.gameObject.SetActive(false);
+            listener.gameObject.SetActive(true);
+            listener.StartListen();
+            yield return Drain(first.Completion);
+            Assert.That(first.Completion.Result.Kind, Is.EqualTo(ListenerResultKind.Canceled));
+            for (int i = 0; i < 20 && listener.CurrentExecution == null; i++) yield return null;
+            Assert.That(listener.CurrentExecution.Id, Is.GreaterThan(first.Id));
+            Assert.That(first.State, Is.EqualTo(ListenerExecutionState.Completed));
+            Assert.That(counts.Peak, Is.EqualTo(1));
+            yield return Drain(listener.StopListenAsync());
+        }
+
+        [UnityTest]
+        public IEnumerator ExecutionResultSupportsMultipleAndLateAwaiters()
+        {
+            var listener = MakeListener(new ActiveStateConditionDefinition { Target = MakeObject("Target") });
+            using IDisposable diagnostics = listener.AcquireDiagnostics();
+            Assert.That(listener.IsInitialized, Is.False);
+            listener.gameObject.SetActive(true);
+            ListenerExecution execution = listener.StartExecution();
+            Task<ListenerResult> first = execution.Completion, second = execution.Completion;
+            yield return Drain(Task.WhenAll(first, second));
+            Assert.That(first.Result.Kind, Is.EqualTo(ListenerResultKind.Satisfied));
+            Assert.That(first, Is.SameAs(second));
+            Assert.That(execution.Completion.Result.ExecutionId, Is.EqualTo(execution.Id));
+            Assert.That(listener.LastResult.Value.ExecutionId, Is.EqualTo(execution.Id));
+            var records = new List<ConditionDiagnostic>();
+            Assert.That(listener.CopyConditionDiagnostics(records), Is.EqualTo(1));
+            Assert.That(records[0].Path, Is.EqualTo("Root"));
+        }
+
+        [UnityTest]
+        public IEnumerator CallbackErrorsKeepSatisfiedResultAndStopAutomaticRepetition()
+        {
+            var listener = MakeListener(new ActiveStateConditionDefinition { Target = MakeObject("Target") }, false);
+            listener.OnSuccess.AddListener(() => throw new InvalidOperationException("Execution callback test"));
+            LogAssert.Expect(LogType.Exception, new Regex("Execution callback test"));
+            listener.gameObject.SetActive(true);
+            ListenerExecution execution = listener.StartExecution();
+            yield return Drain(execution.Completion);
+            Assert.That(execution.Completion.Result.Kind, Is.EqualTo(ListenerResultKind.Satisfied));
+            Assert.That(execution.Completion.Result.HasErrors, Is.True);
+            Assert.That(execution.Completion.Result.Errors[0].Phase, Is.EqualTo(ListenerErrorPhase.SuccessCallback));
+            yield return null; yield return null;
+            Assert.That(listener.CurrentExecution, Is.Null);
+        }
+
+        [UnityTest]
+        public IEnumerator PreparationFailureIsSeparateFromExecutionAndCanBeCorrected()
+        {
+            var listener = MakeListener(null);
+            listener.Conditions.Clear();
+            listener.gameObject.SetActive(true);
+            Assert.Throws<InvalidOperationException>(() => listener.StartExecution());
+            Assert.That(listener.PreparationError, Is.Not.Null);
+            Assert.That(listener.CurrentExecution, Is.Null);
+            Assert.That(listener.LastResult, Is.Null);
+            listener.Conditions.Add(new ActiveStateConditionDefinition { Target = MakeObject("Target") });
+            ListenerExecution execution = listener.StartExecution();
+            Assert.That(listener.PreparationError, Is.Null);
+            yield return Drain(execution.Completion);
+            Assert.That(execution.Completion.Result.Kind, Is.EqualTo(ListenerResultKind.Satisfied));
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyCompletesCapturedExecutionAndLeasesCanBeReleasedLater()
+        {
+            var listener = MakeListener(new CountingDefinition(new Counts()));
+            IDisposable first = listener.AcquireDiagnostics(), second = listener.AcquireDiagnostics();
+            listener.gameObject.SetActive(true);
+            ListenerExecution execution = listener.StartExecution();
+            Object.Destroy(listener);
+            yield return null;
+            yield return Drain(execution.Completion);
+            Assert.That(execution.Completion.Result.Kind, Is.EqualTo(ListenerResultKind.Canceled));
+            first.Dispose(); first.Dispose(); second.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator OverlappingDiagnosticsRequestsArePassiveAndDoNotMixExecutions()
+        {
+            var listener = MakeListener(new ActiveStateConditionDefinition { Target = MakeObject("Target") });
+            IDisposable first = listener.AcquireDiagnostics(), second = listener.AcquireDiagnostics();
+            var records = new List<ConditionDiagnostic>();
+            Assert.That(listener.CopyConditionDiagnostics(records), Is.Zero);
+            Assert.That(listener.IsInitialized, Is.False);
+            first.Dispose(); first.Dispose();
+            listener.gameObject.SetActive(true);
+            ListenerExecution execution = listener.StartExecution();
+            yield return Drain(execution.Completion);
+            Assert.That(listener.CopyConditionDiagnostics(records), Is.EqualTo(1));
+            ConditionDiagnostic saved = records[0];
+            second.Dispose();
+            ListenerExecution next = listener.StartExecution();
+            yield return Drain(next.Completion);
+            Assert.That(listener.CopyConditionDiagnostics(records), Is.Zero);
+            Assert.That(saved.ExecutionId, Is.EqualTo(execution.Id));
+            Assert.That(next.Id, Is.GreaterThan(saved.ExecutionId));
+        }
+
+        [UnityTest]
+        public IEnumerator CoreInitializationFailureBelongsToExecutionInsteadOfPreparation()
+        {
+            foreach (bool strict in new[] { false, true })
+            {
+                var listener = MakeListener(new InitializationFailureDefinition());
+                listener.gameObject.SetActive(true);
+                LogAssert.Expect(LogType.Exception, new Regex("Core initialization test"));
+                ListenerExecution execution;
+                if (strict) execution = listener.StartExecution();
+                else { listener.StartListen(); execution = listener.CurrentExecution; }
+                Assert.That(execution, Is.Not.Null);
+                yield return Drain(execution.Completion);
+                Assert.That(listener.PreparationError, Is.Null);
+                Assert.That(execution.Completion.Result.Kind, Is.EqualTo(ListenerResultKind.Faulted));
+                Assert.That(execution.Completion.Result.Errors[0].Phase, Is.EqualTo(ListenerErrorPhase.Initialization));
+            }
+        }
+
+        [Serializable]
+        private sealed class InitializationFailureDefinition : ConditionDefinition
+        {
+            protected override ICondition CreateRuntimeCondition() => new InitializationFailureCondition();
+        }
+        private sealed class InitializationFailureCondition : Condition
+        {
+            public override bool IsValid => true;
+            public override bool IsSatisfied => false;
+            protected override void OnInitialize() => throw new InvalidOperationException("Core initialization test");
+            public override Task CheckAsync(CancellationToken token) => Task.CompletedTask;
+        }
+
         private sealed class Counts { internal int Active, Peak, Activations; }
         [Serializable]
         private sealed class CountingDefinition : ConditionDefinition

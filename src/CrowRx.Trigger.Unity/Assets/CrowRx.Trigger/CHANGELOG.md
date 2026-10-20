@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.1] - 2026-10-20
+
+### Added
+
+- 특정 Execution의 결과와 Cleanup 완료를 기다리는 StartExecution API를 추가했다.
+- 현재 Execution, 마지막 Result와 실행 전 설정 준비 오류를 조회할 수 있게 했다.
+- 요청한 동안만 Condition 상세 관찰을 기록하는 diagnostics API를 연결했다.
+- 실행 상태·오류·Condition 경로를 보여 주는 읽기 전용 Runtime Inspector를 추가했다.
+- Execution 수명·진단 요청·Runtime Inspector의 EditMode·PlayMode 회귀 테스트를 추가했다.
+
+### Changed
+
+- CrowRx.Trigger NuGet 1.0.1을 사용하도록 요구 버전과 사용자 문서를 갱신했다.
+- Play Mode에서 설정 편집을 막으면서 Runtime 패널은 펼쳐 볼 수 있게 했다.
+
 ## [0.1.0] - 2026-10-15
 
 ### Added

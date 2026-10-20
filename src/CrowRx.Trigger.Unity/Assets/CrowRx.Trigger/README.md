@@ -6,7 +6,7 @@
 
 Unity 6000.0 이상에서 사용한다. 패키지를 사용하기 전에 NuGet으로 다음 패키지를 설치해 둬야 한다. NuGetForUnity를 이용해 설치할 수 있다.
 
-- **CrowRx.Trigger 1.0.0**과 해당 의존성
+- **CrowRx.Trigger 1.0.1**과 해당 의존성
 - **R3 1.3.1**
 
 Unity Package Manager용 **R3.Unity 1.3.1**과 **UniTask 2.5.11**도 필요하다. 두 패키지는 이 패키지의 UPM 의존성으로 선언되어 있다. NuGet 패키지는 별도로 설치해야 하며 DLL은 함께 제공하지 않는다.
@@ -85,6 +85,30 @@ GameObject를 드래그할 때는 조건 컴포넌트가 하나만 붙어 있어
 고급 설정의 **유효하지 않은 조건의 오류 알림 생략**을 켜면 검사 대상이 유효하지 않을 때 오류 알림 없이 구독을 끝낸다. 비어 있는 조건 그룹, 누락된 컴포넌트 참조, 순환 참조 같은 구성 오류까지 무시하는 옵션은 아니다.
 
 설정은 최초 초기화할 때 확정된다. 보통 첫 검사 시작 시 자동으로 초기화되며, 이후 설정이나 원본 컴포넌트를 수정해도 반영되지 않는다. Play Mode에서는 인스펙터가 읽기 전용이므로, 설정을 변경하려면 Play Mode를 종료하고 수정한다.
+
+## Execution 결과와 Runtime 확인
+
+특정 실행의 결과를 기다리려면 Play Mode의 활성 리스너에서 `StartExecution()`을 호출한다. 설정 생성 실패는 `PreparationError`에 기록하고 호출자에게 예외를 전달한다. 실행이나 Cleanup 중 중복 호출도 예외로 알린다. 기존 UnityEvent 연결에는 `StartListen()`을 그대로 사용하면 된다.
+
+```csharp
+var execution = listener.StartExecution();
+var result = await execution.Completion;
+Debug.Log($"Execution #{result.ExecutionId}: {result.Kind}");
+if (result.HasErrors)
+    foreach (var error in result.Errors) Debug.Log($"{error.Phase}: {error.Exception.Message}");
+```
+
+Execution은 조건 감시 시작부터 Cleanup 완료까지다. 결과는 `Satisfied`, `Canceled`, `Unavailable`, `Faulted` 중 하나이며 실행 오류와 취소는 Task 예외 대신 Result로 받는다. 성공 알림을 시작했다면 callback이나 Cleanup이 실패해도 `Satisfied`를 유지하고 오류를 별도로 남긴다. 오류가 있는 실행은 자동 반복을 중단한다.
+
+한 번만 실행 옵션을 끄면 다음 Execution이 시작된다. 이전 핸들의 `Completion`은 다음 실행이나 UnityEvent가 시작한 별도 작업을 기다리지 않는다. `StopListenAsync()`도 호출 당시 실행의 Cleanup만 기다린다. `CurrentExecution`과 `LastResult`는 서로 다른 실행일 수 있으므로 ID로 구분한다.
+
+Inspector의 **Runtime**을 펼치면 현재 ID·State, 재시작 예약, 마지막 Result·오류, Condition별 최근 관찰 상태를 볼 수 있다. `Satisfied · Errors present`는 성공 알림을 시작한 뒤 오류도 관찰한 결과다. Execution 생성 전 오류는 **Before Execution · Preparation error**로 별도 표시한다.
+
+Runtime 패널은 100ms마다 저장된 정보만 읽는다. 실행 전에는 `Idle / Not initialized`를 표시하며 실행 트리를 만들지 않는다. 상세 진단은 펼쳐진 패널이 있는 동안만 기록하고, 접거나 Inspector를 닫으면 요청을 해제한다. `Unknown`은 관찰하지 않은 값이며, `Pending`은 검사 완료 대기다. 미충족을 오류로 취급하지 않는다. 경로는 해당 Execution의 실제 Condition 순서이며 에셋 ID가 아니다. 사용자 조건 내부나 기록 요청 이전의 상태는 표시되지 않을 수 있다.
+
+코드에서도 `AcquireDiagnostics()`와 `CopyConditionDiagnostics(List<ConditionDiagnostic>)`로 같은 정보를 읽을 수 있다. 복사는 목록을 비우고 저장된 현재 실행 또는 Idle일 때 마지막 실행의 정보만 채운다. 여러 요청은 각각 Dispose해야 하며, 요청만으로 초기화하거나 조건을 다시 검사하지 않는다.
+
+`CheckConditionsImmediately()`는 Execution 없는 동기 확인이다. 이 호출이 성공 이벤트를 내고 현재 감시를 중지하더라도, 감시 Execution의 결과는 일반 중지 규칙을 따른다.
 
 ## 코드에서 설정하기
 

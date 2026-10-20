@@ -376,6 +376,41 @@ namespace CrowRx.Trigger.Unity.Tests
             }
         }
 
+        [UnityTest]
+        public IEnumerator RuntimePanelsArePassiveAndReleaseIndependentRequests()
+        {
+            var listener = MakeMixedListener();
+            _editor = UnityEditor.Editor.CreateEditor(listener);
+            var otherEditor = UnityEditor.Editor.CreateEditor(listener);
+            _window = ScriptableObject.CreateInstance<InspectorTestWindow>(); _window.Show();
+            VisualElement first = _editor.CreateInspectorGUI(), second = otherEditor.CreateInspectorGUI();
+            _window.rootVisualElement.Add(first); _window.rootVisualElement.Add(second);
+            try
+            {
+                yield return null;
+                var a = first.Q<Foldout>("runtime-foldout");
+                var b = second.Q<Foldout>("runtime-foldout");
+                Assert.That(a, Is.Not.Null); Assert.That(b, Is.Not.Null);
+                Assert.That(first.Q<Label>("runtime-execution").text, Is.EqualTo("Idle / Not initialized"));
+                Assert.That(first.Q("listener-runtime").Query<Button>().ToList(), Is.Empty);
+                a.value = true; b.value = true;
+                yield return null;
+                var requests = typeof(TriggerListenerBehaviour).GetField("_diagnosticsRequests", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                Assert.That(requests.GetValue(listener), Is.EqualTo(2));
+                Assert.That(listener.IsInitialized, Is.False);
+                Assert.That(listener.Condition, Is.Null);
+                a.value = false;
+                Assert.That(requests.GetValue(listener), Is.EqualTo(1));
+                second.RemoveFromHierarchy();
+                Assert.That(requests.GetValue(listener), Is.Zero);
+                _window.rootVisualElement.Add(second);
+                Assert.That(requests.GetValue(listener), Is.EqualTo(1));
+                Object.DestroyImmediate(otherEditor); otherEditor = null;
+                Assert.That(requests.GetValue(listener), Is.Zero);
+            }
+            finally { if (otherEditor) Object.DestroyImmediate(otherEditor); }
+        }
+
         private TriggerListenerBehaviour MakeMixedListener()
         {
             var root = MakeObject("Mixed");

@@ -37,6 +37,17 @@ namespace CrowRx.Trigger.Unity
 
         private Listener _listener;
         private bool _destroyed;
+        private int _diagnosticsRequests;
+        private IDisposable _coreDiagnostics;
+
+        /// <summary>현재 감시하거나 Cleanup 중인 Execution이다. Idle이면 null이다.</summary>
+        public ListenerExecution CurrentExecution => _listener?.CurrentExecution;
+
+        /// <summary>마지막 Execution의 Cleanup까지 끝난 결과다. 다음 실행을 시작해도 유지한다.</summary>
+        public ListenerResult? LastResult => _listener?.LastResult;
+
+        /// <summary>Execution 생성 전 설정 준비에서 마지막으로 발생한 오류다. 준비에 성공하면 지운다.</summary>
+        public Exception PreparationError { get; private set; }
 
         /// <summary>성공을 코드에서 구독한다. 예외가 발생하면 기존 Listener의 오류 처리로 전달된다.</summary>
         public event Action Success;
@@ -126,6 +137,8 @@ namespace CrowRx.Trigger.Unity
         private void OnDestroy()
         {
             _destroyed = true;
+            _coreDiagnostics?.Dispose();
+            _coreDiagnostics = null;
 
             if (_listener is null)
             {
@@ -153,19 +166,102 @@ namespace CrowRx.Trigger.Unity
                 throw new InvalidOperationException("The listener component has been destroyed.");
             }
 
-            if (_listener is null)
+            try
             {
-                ICondition root = ConditionTree.CreateRoot(conditions, combineType);
-                _listener = new UnityListener(root)
-                {
-                    IsOneShot = isOneShot,
-                    IsIgnoreNotAvailableCondition = ignoreInvalidCondition
-                };
-                _listener.Success += ForwardSuccess;
-                _listener.Exception += ForwardException;
+                PrepareListener();
+                _listener.Initialize();
+                PreparationError = null;
             }
+            catch (Exception error)
+            {
+                PreparationError = error;
+                throw;
+            }
+        }
 
-            _listener.Initialize();
+        private void PrepareListener()
+        {
+            if (_listener != null) return;
+
+            ICondition root = ConditionTree.CreateRoot(conditions, combineType);
+            _listener = new UnityListener(root)
+            {
+                IsOneShot = isOneShot,
+                IsIgnoreNotAvailableCondition = ignoreInvalidCondition
+            };
+            _listener.Success += ForwardSuccess;
+            _listener.Exception += ForwardException;
+            if (_diagnosticsRequests > 0) _coreDiagnostics = _listener.AcquireDiagnostics();
+        }
+
+        /// <summary>새 Execution을 시작한다. OneShot 설정에 따라 완료 후 자동 반복할 수 있다.</summary>
+        /// <returns>이번 감시와 Cleanup만 가리키는 핸들이다.</returns>
+        /// <exception cref="InvalidOperationException">Play Mode의 활성 컴포넌트가 아니거나 실행 또는 Cleanup 중이다.</exception>
+        /// <remarks>설정 준비 실패는 PreparationError에 남기고 호출자에게 전달한다. Execution 내부 오류는 Completion의 Result로 받는다.</remarks>
+        public ListenerExecution StartExecution()
+        {
+            if (_destroyed || !Application.isPlaying || !isActiveAndEnabled)
+                throw new InvalidOperationException("StartExecution requires an active component in Play Mode.");
+
+            // 실행 중의 중복 호출을 설정 준비 실패로 기록하지 않는다.
+            if (_listener?.CurrentExecution != null)
+                throw new InvalidOperationException("An execution is already running or stopping.");
+
+            PrepareForExecution();
+            return _listener.StartExecution();
+        }
+
+        private void PrepareForExecution()
+        {
+            try
+            {
+                PrepareListener();
+                PreparationError = null;
+            }
+            catch (Exception error)
+            {
+                PreparationError = error;
+                throw;
+            }
+        }
+
+        /// <summary>Condition 상세 진단을 요청한다. 초기화나 실행은 하지 않는다. 같은 컨텍스트에서 해제한다.</summary>
+        /// <returns>요청을 해제할 핸들이다. 마지막 요청이 해제되면 새 상세 기록을 중단한다.</returns>
+        public IDisposable AcquireDiagnostics()
+        {
+            if (_destroyed) throw new InvalidOperationException("The listener component has been destroyed.");
+            _diagnosticsRequests++;
+            if (_diagnosticsRequests == 1 && _listener != null)
+                _coreDiagnostics = _listener.AcquireDiagnostics();
+            return new DiagnosticsRequest(this);
+        }
+
+        /// <summary>추가 검사 없이 저장된 현재 또는 마지막 Execution의 Condition 진단을 복사한다.</summary>
+        /// <param name="destination">먼저 비운 뒤 진단을 채울 목록이다.</param>
+        /// <returns>복사한 항목 수다. 아직 기록이 없으면 0이다.</returns>
+        public int CopyConditionDiagnostics(List<ConditionDiagnostic> destination)
+        {
+            if (destination == null) throw new ArgumentNullException(nameof(destination));
+            destination.Clear();
+            return _listener?.CopyConditionDiagnostics(destination) ?? 0;
+        }
+
+        private sealed class DiagnosticsRequest : IDisposable
+        {
+            private TriggerListenerBehaviour _owner;
+            internal DiagnosticsRequest(TriggerListenerBehaviour owner) => _owner = owner;
+            public void Dispose()
+            {
+                TriggerListenerBehaviour owner = _owner;
+                if (ReferenceEquals(owner, null)) return;
+                _owner = null;
+                owner._diagnosticsRequests--;
+                if (owner._diagnosticsRequests == 0)
+                {
+                    owner._coreDiagnostics?.Dispose();
+                    owner._coreDiagnostics = null;
+                }
+            }
         }
 
         /// <inheritdoc/>
@@ -178,7 +274,7 @@ namespace CrowRx.Trigger.Unity
 
             try
             {
-                Initialize();
+                PrepareForExecution();
                 _listener.StartListen();
             }
             catch (Exception error)

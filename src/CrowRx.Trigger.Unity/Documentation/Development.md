@@ -17,9 +17,9 @@
 | `Assets/CrowRx.Trigger/Tests/Runtime` | 실행 수명과 비동기 정리 테스트 |
 | `Documentation` | 배포에 포함하지 않는 개발 기록 |
 
-패키지 ID는 `com.crowlib.crowrx-trigger`, 표시 이름과 기본 네임스페이스는 `CrowRx.Trigger.Unity`다. 초기 버전은 `0.1.0`, 최소 Unity 버전은 `6000.0`, 라이선스는 MIT다.
+패키지 ID는 `com.crowlib.crowrx-trigger`, 표시 이름은 `CrowRx.Trigger`, 기본 네임스페이스는 `CrowRx.Trigger.Unity`다. 현재 버전은 `1.0.1`, 최소 Unity 버전은 `6000.0`, 라이선스는 MIT다.
 
-NuGet의 CrowRx.Trigger 1.0.0과 해당 의존성, R3 1.3.1은 선행 설치를 전제로 한다. DLL 복사나 자동 설치는 구현하지 않는다. UPM 의존성은 R3.Unity(`com.cysharp.r3`) 1.3.1과 UniTask(`com.cysharp.unitask`) 2.5.11이다.
+NuGet의 CrowRx.Trigger 1.0.1과 해당 의존성, R3 1.3.1은 선행 설치를 전제로 한다. DLL 복사나 자동 설치는 구현하지 않는다. UPM 의존성은 R3.Unity(`com.cysharp.r3`) 1.3.1과 UniTask(`com.cysharp.unitask`) 2.5.11이다.
 
 Runtime 어셈블리는 `R3.Unity`와 `UniTask`를 참조하고 NuGet DLL은 기본 사전 컴파일 어셈블리 참조를 사용한다. Editor 어셈블리는 Runtime을 참조하며 Editor 플랫폼으로 제한한다. Unity가 생성한 `.meta`를 소스와 함께 관리한다.
 
@@ -76,6 +76,14 @@ UI Toolkit의 공통 조건 편집기를 리스너·조건 컴포넌트 인스�
 
 목록 재정렬은 같은 목록 안에서 지원한다. 서로 다른 그룹 사이 이동은 제공하지 않는다. 공유되는 부모 타겟은 읽기 전용으로 표시하고 Play Mode에서는 설정 편집을 막는다. 편집은 Undo·Redo와 프리팹 override가 유지되도록 처리한다.
 
+## Listener Execution API와 Runtime diagnostics v1
+
+Unity 컴포넌트의 StartExecution과 StartListen은 실행 트리 생성만 준비하고 Core에서 초기화·활성화부터 Execution을 관리한다. StartExecution의 트리 생성 실패는 PreparationError에 남기고 호출자에게 전달한다. StartListen은 기존처럼 비활성 상태를 무시하고 준비·실행 오류를 이벤트로 전달한다. 명시적 Initialize는 Execution 밖에서 초기화한다. 진단 요청은 컴포넌트에서 먼저 등록해 둘 수 있고, Listener가 실제 생성됐을 때 Core 요청으로 연결한다. 요청만으로 트리는 만들지 않는다.
+
+Inspector는 설정 컨테이너만 Play Mode에서 비활성화하고 Runtime은 별도 읽기 전용 패널로 둔다. 패널이 펼쳐져 실제 UI panel에 연결된 동안 Core 진단 요청을 보유하며, 접기·분리·Editor OnDisable에서 해제한다. 스케줄러는 100ms마다 저장된 상태를 읽고 임시 복사 목록은 ListPool로 대여·반환한다. 새로운 검사·버튼·runtime reflection은 추가하지 않는다.
+
+기능 구현 검증 당시에는 개발 프로젝트의 Core DLL·XML을 직접 동기화했다. 이후 Core 1.0.1을 NuGet 갤러리에 게시하고 개발 프로젝트도 NuGetForUnity로 1.0.1에 업데이트했다. 설치된 DLL이 배포용 빌드와 동일함을 확인했다. Unity 패키지 버전도 1.0.1이며 Core 1.0.1을 전제로 한다. Execution API가 없는 Core 1.0.0은 사용할 수 없다. QV의 설치본은 변경하지 않았다.
+
 ## 검증 방법과 현재 기록
 
 Unity Test Runner에서 다음 어셈블리를 실행한다.
@@ -94,3 +102,14 @@ Unity Test Runner에서 다음 어셈블리를 실행한다.
 테스트는 Preview Scene과 임시 에셋을 사용하고 정리하며 사용자 씬을 저장하지 않는다. 씬 직렬화 테스트는 Test Runner의 미저장 씬 제약을 피하기 위해 이름이 있는 빈 씬 fixture를 복사해 사용한다.
 
 위 결과는 당시 Unity Editor에서의 기능 검증이다. Mono·IL2CPP Player 동작과 성능·GC 측정은 별도로 확인해야 한다. 문서만 변경한 경우 이 기록을 새 테스트 실행 결과처럼 갱신하지 않는다.
+
+### 2026-10-20 Execution·diagnostics v1
+
+Unity **6000.6.6f1 Editor**에서 새 Core 빌드와 최종 소스로 검증했다.
+
+- EditMode **18/18 통과**: 기존 씬·프리팹 직렬화·Undo·조건 UI 회귀와 Runtime 패널의 수동 열기·닫기, attach·detach, 복수 Inspector 요청 해제, Play Mode 설정 편집 차단, 설정 준비 오류와 Satisfied · Errors present 표시를 확인했다.
+- PlayMode **17/17 통과**: 기존 10개 시나리오와 Execution 결과·다중 await·완료 후 await, 중복 시작·비활성 상태 거부, 이전 핸들과 빠른 재시작 분리, 겹친 진단 요청, 파괴 후 Cleanup, callback 오류 후 자동 반복 중단, 설정 준비 실패 재시도, StartListen·StartExecution의 Core 초기화 실패 Result를 확인했다.
+- 최종 Editor 재컴파일은 compilationFailed=false였다. 기존 EditMode 테스트의 AppDomain.GetAssemblies 호출에서 UAC0005 경고가 관찰됐다. 새 runtime 코드에는 reflection을 넣지 않았다.
+- 첫 Play 전환 Inspector 테스트에서는 로그 기대 등록 시점을 수정했다. 중간 실행 후 Unity.PlayMode.Editor.DefaultScenario의 Stopping/Idle assertion이 한 번 기록됐지만, Console을 분리한 최종 EditMode·PlayMode 실행에서는 재현되지 않았다. Unity 내부 문제의 해결을 주장하는 결과는 아니다. 테스트가 의도한 예외는 LogAssert로 검증했다.
+
+Core의 기본·로그 Lifetime과 Creation·용량 검증도 실행했다. 상세 기록은 Core `verification/README.md`에 있다. 이 결과는 QV의 과거 검증을 재사용하지 않은 이번 개발 프로젝트의 Editor 검증이다. QV 진행, Player·IL2CPP와 CPU·GC는 실행하거나 측정하지 않았다. 패키지 버전·배포 상태는 바꾸지 않았다.

@@ -29,6 +29,7 @@ namespace CrowRx.Trigger.Unity.Editor
     internal sealed class TriggerListenerEditor : UnityEditor.Editor
     {
         private VisualElement _root;
+        private ListenerRuntimePanel _runtime;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -46,6 +47,7 @@ namespace CrowRx.Trigger.Unity.Editor
 
         private void OnDisable()
         {
+            _runtime?.Dispose();
             Undo.undoRedoPerformed -= Rebuild;
             EditorApplication.playModeStateChanged -= PlayModeChanged;
         }
@@ -62,6 +64,8 @@ namespace CrowRx.Trigger.Unity.Editor
 
         private void Build()
         {
+            bool runtimeExpanded = _runtime?.Expanded ?? false;
+            _runtime?.Dispose();
             _root.Unbind();
             _root.Clear();
 
@@ -75,7 +79,9 @@ namespace CrowRx.Trigger.Unity.Editor
                 return;
             }
 
-            layout.CloneTree(_root);
+            VisualElement settings = new() { name = "listener-settings" };
+            _root.Add(settings);
+            layout.CloneTree(settings);
 
             InspectorContext context = new(serializedObject, _root, Build);
             SerializedProperty conditions = serializedObject.FindProperty("conditions");
@@ -85,8 +91,10 @@ namespace CrowRx.Trigger.Unity.Editor
 
             UpdateValidation();
 
-            _root.Bind(serializedObject);
-            _root.SetEnabled(!EditorApplication.isPlayingOrWillChangePlaymode);
+            settings.Bind(serializedObject);
+            settings.SetEnabled(!EditorApplication.isPlayingOrWillChangePlaymode);
+            _runtime = new ListenerRuntimePanel((TriggerListenerBehaviour)target) { Expanded = runtimeExpanded };
+            _root.Add(_runtime);
         }
 
         private void UpdateValidation()
