@@ -70,6 +70,14 @@ BufferComparison과 LoopComparison의 ConditionGroup.cs는 2026-10-14 비교 스
 
 아래 성능 결과는 2026-10-14 데스크톱 .NET 기록이다. 별도 표기가 없으면 Windows x64, .NET 8.0.32, Workstation GC, Release, `DOTNET_TieredCompilation=0`이다. 종료 작업 지연 생성의 최초 비교는 .NET 8.0.31이었다. Unity Editor·Mono·IL2CPP·Player와 실제 소비 프로젝트 실행은 검증하지 않았다.
 
+### 2026-10-20 Execution·diagnostics 기능 검증
+
+`Lifetime/ExecutionTests.cs`에 Execution 경계, 여러 awaiter와 완료 후 await, 중복 시작 거부, 자동 반복·예약 재시작, callback·Cleanup 오류와 원래 Result 보존, 원래 예외·phase·경로, 상세 요청 수명, 단락 평가·사용자 조건·중첩 pending, getter 호출 횟수 불변을 추가했다.
+
+`run.ps1 -Mode Tests -Logging -Offline` 실행 결과: Lifetime 기본 92/92, 로그 활성화 95/95, Creation 기본·로그 각각 24/24, 네 용량 경로 각각 32개 시나리오가 통과했다. 기본 심볼 빌드로 복원했다. 이 호출에서는 캐시 패키지를 사용하고 NuGet 취약성 감사는 생략했다.
+
+Unity 연결부의 검증 범위와 기록은 Unity 개발 프로젝트의 `Documentation/Development.md`에 둔다. QV의 과거 통과 결과를 이번 변경의 검증으로 사용하지 않았다. Player·IL2CPP와 CPU·GC는 이번에 측정하지 않았으므로 아래 과거 벤치마크는 새 Execution·diagnostics 구현의 수치가 아니다.
+
 ## 적용한 할당 개선
 
 단위는 B/회이며 워밍업 후 값이다. 서로 다른 단계나 측정 구간을 한 합계로 더하지 않는다.

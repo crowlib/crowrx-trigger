@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,12 +35,42 @@ namespace CrowRx.Trigger
         /// <summary>검사, 이벤트 처리, 종료 정리 중 발생한 오류를 알린다. 한 핸들러가 실패해도 다른 오류 핸들러는 호출한다.</summary>
         public event Action<Exception>? Exception;
 
-        private ListenSession? _session;
+        private ListenerExecution? _session;
+        private long _executionId;
+        private int _diagnosticRequests;
+        private ConditionDiagnosticTrace? _lastDiagnostics;
         private bool _isExceptionLoggerRegistered;
         private static readonly Action<Exception> ExceptionLogger = error => Log.Exception(error);
 
         /// <inheritdoc/>
         public bool IsInitialized { get; private set; }
+
+        /// <summary>현재 검사 또는 정리 중인 Execution이다. Idle이면 null이다.</summary>
+        public ListenerExecution? CurrentExecution => _session;
+        /// <summary>마지막으로 종료한 Execution의 결과다. 새로운 실행을 시작해도 다음 종료까지 유지한다.</summary>
+        public ListenerResult? LastResult { get; private set; }
+
+        internal bool DiagnosticsRequested => _diagnosticRequests != 0;
+
+        /// <summary>상세 Condition 진단을 요청한다. 초기화나 실행을 시작하지 않는다.</summary>
+        /// <returns>요청을 해제할 때 Dispose할 객체다. 마지막 요청이 해제되면 상세 기록을 중단한다.</returns>
+        public IDisposable AcquireDiagnostics()
+        {
+            ++_diagnosticRequests;
+            return new DiagnosticsLease(this);
+        }
+
+        /// <summary>저장된 Condition 진단을 복사한다. 조건을 다시 평가하지 않는다.</summary>
+        /// <param name="destination">먼저 비운 뒤 진단 정보의 복사본을 채울 목록이다.</param>
+        /// <returns>복사한 항목 수다. 현재 실행이 있으면 그 실행만, Idle이면 마지막 실행만 복사한다.</returns>
+        /// <exception cref="ArgumentNullException">목록이 null이다.</exception>
+        public int CopyConditionDiagnostics(List<ConditionDiagnostic> destination)
+        {
+            if (destination is null) throw new ArgumentNullException(nameof(destination));
+            destination.Clear();
+            ConditionDiagnosticTrace? trace = _session is not null ? _session.Diagnostics : _lastDiagnostics;
+            return trace?.CopyTo(destination) ?? 0;
+        }
 
         /// <summary>구독할 조건을 가져온다. 파생 클래스에서 재정의할 때 구독 중에는 같은 조건을 유지한다.</summary>
         public virtual ICondition? Condition { get; }
@@ -70,7 +101,10 @@ namespace CrowRx.Trigger
 
             OnInitialize();
 
-            Condition?.Initialize();
+            ICondition? condition = Condition;
+            if (ConditionObservation.Current?.Execution == _session && _session is not null)
+                _session.Condition = condition;
+            condition?.Initialize();
 
             IsInitialized = true;
         }
@@ -88,7 +122,21 @@ namespace CrowRx.Trigger
                 return;
             }
 
-            ListenSession session = new();
+            StartExecutionCore();
+        }
+
+        /// <summary>새 조건 감시를 시작하고 해당 Execution을 반환한다.</summary>
+        /// <returns>이번 감시의 결과와 Cleanup 완료를 기다릴 핸들이다. 자동 반복은 IsOneShot 설정을 따른다.</returns>
+        /// <exception cref="InvalidOperationException">이미 실행 중이거나 Cleanup 중이다.</exception>
+        public ListenerExecution StartExecution()
+        {
+            if (_session is not null) throw new InvalidOperationException("An execution is already running or stopping.");
+            return StartExecutionCore();
+        }
+
+        private ListenerExecution StartExecutionCore()
+        {
+            ListenerExecution session = new(this, ++_executionId);
             _session = session;
             TaskAwaiter<bool> awaiter = RunSessionAsync(session).GetAwaiter();
 
@@ -101,28 +149,37 @@ namespace CrowRx.Trigger
                 }
                 catch (Exception exception)
                 {
-                    ExceptionProcess(exception);
+                    session.RecordError(exception, session.Phase);
+                    if (session.Kind == ListenerResultKind.Canceled && !session.StopRequested)
+                        session.Kind = ListenerResultKind.Faulted;
+                    ExceptionProcess(exception, session);
                 }
 
+                ListenerResult result = session.Finish();
                 bool ownsSession = ReferenceEquals(session, _session);
                 if (ownsSession)
                 {
                     _session = null;
+                    LastResult = result;
+                    _lastDiagnostics = session.Diagnostics;
                 }
 
-                session.Completion?.TrySetResult(true);
+                session.Diagnostics = null;
+                session.PublishCompletion();
+                needToRestart &= !result.HasErrors;
 
                 if (ownsSession && (session.RestartRequested || (needToRestart && !session.StopRequested)))
                 {
                     StartListen();
                 }
             });
+            return session;
         }
 
         /// <summary>구독 중지를 요청하고 재시작 예약을 취소한다. 이후 시작을 요청하면 정리 완료 뒤 실행한다.</summary>
         public void StopListen()
         {
-            ListenSession? session = _session;
+            ListenerExecution? session = _session;
             if (session is null)
             {
                 return;
@@ -144,7 +201,8 @@ namespace CrowRx.Trigger
             }
             catch (Exception exception)
             {
-                ExceptionProcess(exception);
+                session.RecordError(exception, ListenerErrorPhase.Cancellation);
+                ExceptionProcess(exception, session);
             }
         }
 
@@ -155,37 +213,39 @@ namespace CrowRx.Trigger
         /// <returns>현재 구독의 실행 상태가 해제되면 완료되는 작업이다. 구독 중이 아니면 이미 완료된 작업이다.</returns>
         public Task StopListenAsync()
         {
-            ListenSession? session = _session;
+            ListenerExecution? session = _session;
             if (session is null)
             {
                 return Task.CompletedTask;
             }
 
-            TaskCompletionSource<bool> completion = session.Completion ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
             // 취소 콜백이 종료 처리를 진행하기 전에 대기할 Task를 확보한다.
-            Task completionTask = completion.Task;
+            Task completionTask = session.Completion;
             StopListen();
 
             return completionTask;
         }
 
-        private async Task<bool> RunSessionAsync(ListenSession session)
+        private async Task<bool> RunSessionAsync(ListenerExecution session)
         {
             bool repeat = false;
+            using ConditionObservation.Scope observation = ConditionObservation.Enter(session.RootObservation);
 
             try
             {
+                session.Phase = ListenerErrorPhase.Initialization;
                 Initialize();
 
                 session.Condition = Condition;
 
                 if (!session.StopRequested)
                 {
+                    session.Phase = ListenerErrorPhase.Activation;
                     session.Condition?.Activate();
                 }
 
-                ConditionState state = await ListenConditionAsync(session.Condition, session.Cancellation.Token);
+                if (!session.Stopping) session.State = ListenerExecutionState.Checking;
+                ConditionState state = await ListenConditionAsync(session);
 
                 if (state == ConditionState.Satisfied && !session.StopRequested)
                 {
@@ -194,6 +254,8 @@ namespace CrowRx.Trigger
 
                     if (!session.StopRequested)
                     {
+                        session.Kind = ListenerResultKind.Satisfied;
+                        session.Phase = ListenerErrorPhase.SuccessCallback;
                         Success?.Invoke();
                         repeat = !IsOneShot && !session.StopRequested;
                     }
@@ -202,11 +264,14 @@ namespace CrowRx.Trigger
             catch (OperationCanceledException) when (session.Cancellation.IsCancellationRequested) { }
             catch (Exception exception)
             {
-                ExceptionProcess(exception);
+                ConditionObservation.Error(exception, session.Phase);
+                if (session.Kind != ListenerResultKind.Satisfied) session.Kind = ListenerResultKind.Faulted;
+                ExceptionProcess(exception, session);
             }
             finally
             {
                 session.Stopping = true;
+                session.Phase = ListenerErrorPhase.Cancellation;
 
                 try
                 {
@@ -214,28 +279,33 @@ namespace CrowRx.Trigger
                 }
                 catch (Exception exception)
                 {
-                    repeat = false; ExceptionProcess(exception);
+                    session.RecordError(exception, ListenerErrorPhase.Cancellation);
+                    repeat = false; ExceptionProcess(exception, session);
                 }
 
                 if (session.Condition is ConditionGroup group)
                 {
+                    session.Phase = ListenerErrorPhase.Cleanup;
                     try
                     {
                         await group.EndChecksAsync();
                     }
                     catch (Exception exception)
                     {
-                        repeat = false; ExceptionProcess(exception);
+                        ConditionObservation.Error(exception, ListenerErrorPhase.Cleanup);
+                        repeat = false; ExceptionProcess(exception, session);
                     }
                 }
 
                 try
                 {
+                    session.Phase = ListenerErrorPhase.Deactivation;
                     session.Condition?.Deactivate();
                 }
                 catch (Exception exception)
                 {
-                    repeat = false; ExceptionProcess(exception);
+                    ConditionObservation.Error(exception, ListenerErrorPhase.Deactivation);
+                    repeat = false; ExceptionProcess(exception, session);
                 }
 
                 session.Cancellation.Dispose();
@@ -248,9 +318,12 @@ namespace CrowRx.Trigger
         /// <remarks>
         /// 비동기 검사를 실행하지 않는다. 만족, 유효하지 않은 조건 또는 오류가 발생하면 구독 중지를 요청한다.
         /// 자동 재시작과 <see cref="IsOneShot"/> 설정은 적용하지 않으며, 반복 호출하면 성공 이벤트도 다시 호출할 수 있다.
+        /// Execution은 만들지 않는다. 진행 중인 Execution을 중지했다면 그 Execution은 일반 취소 규칙을 따르며,
+        /// 이 동기 호출의 Success를 해당 Execution의 Satisfied 결과로 기록하지 않는다.
         /// </remarks>
         public void CheckConditionsImmediately()
         {
+            using ConditionObservation.Scope observation = ConditionObservation.Enter(null);
             bool shouldStop = false;
             try
             {
@@ -299,16 +372,22 @@ namespace CrowRx.Trigger
             }
         }
 
-        private async Task<ConditionState> ListenConditionAsync(ICondition? condition, CancellationToken cancellationToken)
+        private async Task<ConditionState> ListenConditionAsync(ListenerExecution session)
         {
+            ICondition? condition = session.Condition;
+            CancellationToken cancellationToken = session.Cancellation.Token;
             ConditionState conditionState = ConditionState.NotYet;
 
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (condition is null || !condition.IsValid)
+                    session.Phase = ListenerErrorPhase.Validation;
+                    bool valid = condition is not null && condition.IsValid;
+                    session.RootObservation.Validity(valid);
+                    if (!valid)
                     {
+                        session.Kind = ListenerResultKind.Unavailable;
                         if (!IsIgnoreNotAvailableCondition)
                         {
                             throw new InvalidOperationException("Condition is not available. Check the conditions in the group.");
@@ -317,12 +396,20 @@ namespace CrowRx.Trigger
                         break;
                     }
 
-                    await condition.CheckAsync(cancellationToken);
+                    session.Phase = ListenerErrorPhase.Check;
+                    Task check = condition!.CheckAsync(cancellationToken) ?? throw new InvalidOperationException("CheckAsync must not return a null Task.");
+                    session.RootObservation.TaskState(check);
+                    try { await check; }
+                    finally { session.RootObservation.TaskState(check); }
 
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (condition.IsSatisfied)
+                    session.Phase = ListenerErrorPhase.Satisfaction;
+                    bool satisfied = condition.IsSatisfied;
+                    session.RootObservation.Satisfaction(satisfied);
+                    if (satisfied)
                     {
+                        session.ConditionSatisfied = true;
                         conditionState = ConditionState.Satisfied;
 
                         break;
@@ -338,14 +425,17 @@ namespace CrowRx.Trigger
             catch (Exception exception)
             {
                 conditionState = ConditionState.NotAvailable;
+                if (session.Kind != ListenerResultKind.Unavailable && !session.StopRequested)
+                    session.Kind = ListenerResultKind.Faulted;
+                ConditionObservation.Error(exception, session.StopRequested ? ListenerErrorPhase.Cleanup : session.Phase);
 
-                ExceptionProcess(exception);
+                ExceptionProcess(exception, session);
             }
 
             return conditionState;
         }
 
-        private void ExceptionProcess(Exception exception)
+        private void ExceptionProcess(Exception exception, ListenerExecution? execution = null)
         {
             Action<Exception>? handlers = Exception;
             if (handlers is null)
@@ -365,6 +455,7 @@ namespace CrowRx.Trigger
                 }
                 catch (Exception handlerException)
                 {
+                    execution?.RecordError(handlerException, ListenerErrorPhase.ExceptionCallback);
                     handlerFailed = true;
                     LogExceptionSafely(handlerException);
                 }
@@ -376,16 +467,16 @@ namespace CrowRx.Trigger
             }
         }
 
-        private sealed class ListenSession
+        private sealed class DiagnosticsLease : IDisposable
         {
-            public ICondition? Condition;
-
-            public bool Stopping;
-            public bool StopRequested;
-            public bool RestartRequested;
-
-            public readonly CancellationTokenSource Cancellation = new();
-            public TaskCompletionSource<bool>? Completion;
+            private Listener? _owner;
+            internal DiagnosticsLease(Listener owner) { _owner = owner; }
+            public void Dispose()
+            {
+                if (_owner is null) return;
+                --_owner._diagnosticRequests;
+                _owner = null;
+            }
         }
     }
 }

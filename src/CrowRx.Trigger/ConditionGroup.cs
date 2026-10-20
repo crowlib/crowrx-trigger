@@ -107,6 +107,7 @@ namespace CrowRx.Trigger
 
         private static void RecordCheckFailure(ref ExceptionDispatchInfo? failure, Exception error)
         {
+            ConditionObservation.Error(error, ListenerErrorPhase.Cleanup);
             if (failure is null || (failure.SourceException is OperationCanceledException && error is not OperationCanceledException))
             {
                 failure = ExceptionDispatchInfo.Capture(error);
@@ -140,6 +141,7 @@ namespace CrowRx.Trigger
         {
             get
             {
+                using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
                 if (_readingValidity)
                 {
                     return false;
@@ -156,7 +158,7 @@ namespace CrowRx.Trigger
 
                     for (int i = 0, count = Conditions.Count; i < count; ++i)
                     {
-                        if (Conditions[i]?.IsValid ?? false)
+                        if (ConditionObservation.ReadValidity(Conditions[i], i))
                         {
                             continue;
                         }
@@ -182,6 +184,7 @@ namespace CrowRx.Trigger
         {
             get
             {
+                using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
                 if (_readingSatisfaction)
                 {
                     throw new InvalidOperationException("Cyclic group references are not allowed.");
@@ -208,7 +211,7 @@ namespace CrowRx.Trigger
                                         continue;
                                     }
 
-                                    if (!condition.IsSatisfied)
+                                    if (!ConditionObservation.ReadSatisfaction(condition, i))
                                     {
                                         return IsNot;
                                     }
@@ -227,7 +230,7 @@ namespace CrowRx.Trigger
                                         continue;
                                     }
 
-                                    if (condition.IsSatisfied)
+                                    if (ConditionObservation.ReadSatisfaction(condition, i))
                                     {
                                         return !IsNot;
                                     }
@@ -335,6 +338,7 @@ namespace CrowRx.Trigger
         /// <exception cref="OperationCanceledException">검사 취소가 요청됐다.</exception>
         public override async Task CheckAsync(CancellationToken cancellationToken)
         {
+            using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
             if (_checkInProgress)
             {
                 throw new InvalidOperationException("Concurrent CheckAsync calls are not supported.");
@@ -392,11 +396,11 @@ namespace CrowRx.Trigger
                             }
 
                             // 첫 관찰 이후에 완료된 실패도 덮어쓰기 전에 확인한다.
-                            previous.GetAwaiter().GetResult();
+                            ConditionObservation.CompleteCheck(checks.Conditions[i], i, previous);
                         }
 
                         ICondition condition = checks.Conditions[i] ?? throw new InvalidOperationException("Conditions cannot contain null.");
-                        Task task = condition.CheckAsync(checks.Token) ?? throw new InvalidOperationException("CheckAsync must not return a null Task.");
+                        Task task = ConditionObservation.Check(condition, i, checks.Token);
 
                         if (i == checks.Tasks.Count)
                         {
@@ -440,6 +444,7 @@ namespace CrowRx.Trigger
                 }
                 catch (Exception error)
                 {
+                    ConditionObservation.Error(error, ListenerErrorPhase.Check);
                     failure = ExceptionDispatchInfo.Capture(error);
                 }
                 finally
@@ -529,6 +534,7 @@ namespace CrowRx.Trigger
         /// <summary>전체 조건 그래프를 검증한 뒤 자식들을 초기화한다.</summary>
         protected override void OnInitialize()
         {
+            using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
             ValidateConditionGraph();
             if (Conditions is null)
             {
@@ -537,13 +543,14 @@ namespace CrowRx.Trigger
 
             for (int i = 0, count = Conditions.Count; i < count; ++i)
             {
-                Conditions[i]?.Initialize();
+                ConditionObservation.Initialize(Conditions[i], i);
             }
         }
 
         /// <summary>전체 조건 그래프를 검증한 뒤 유효한 자식들을 활성화한다.</summary>
         protected override void OnActivate()
         {
+            using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
             ValidateConditionGraph();
             if (Conditions is null)
             {
@@ -554,9 +561,9 @@ namespace CrowRx.Trigger
             {
                 ICondition condition = Conditions[i];
 
-                if (condition?.IsValid ?? false)
+                if (ConditionObservation.ReadValidity(condition, i))
                 {
-                    condition.Activate();
+                    ConditionObservation.Activate(condition, i);
                 }
             }
         }
@@ -564,6 +571,7 @@ namespace CrowRx.Trigger
         /// <summary>검사 정리를 요청하고 모든 자식의 비활성화를 시도한다. 비동기 정리 완료는 기다리지 않는다.</summary>
         protected override void OnDeactivate()
         {
+            using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
             // 직접 사용하는 그룹도 남아 있는 검사에 취소를 요청한다.
             // Listener는 EndChecksAsync를 기다린 후 Deactivate를 호출한다.
             _ = ObserveCleanupAsync(EndChecksAsync());
@@ -578,7 +586,7 @@ namespace CrowRx.Trigger
             {
                 try
                 {
-                    Conditions[i]?.Deactivate();
+                    ConditionObservation.Deactivate(Conditions[i], i);
                 }
                 catch (Exception error)
                 {
@@ -598,6 +606,7 @@ namespace CrowRx.Trigger
 
         internal async Task EndChecksAsync()
         {
+            using ConditionObservation.Scope observation = ConditionObservation.EnterGroup(this);
             CheckSession? checks = _checks;
             if (checks is null)
             {
@@ -643,7 +652,7 @@ namespace CrowRx.Trigger
                 }
 
                 // 즉시 완료되는 자식이 다른 자식의 실패를 가리지 않도록 완료된 모든 결과를 확인한다.
-                task.GetAwaiter().GetResult();
+                ConditionObservation.CompleteCheck(checks.Conditions[i], i, task);
 
                 if (!checks.CompletionReported[i])
                 {
@@ -685,6 +694,14 @@ namespace CrowRx.Trigger
                 catch (OperationCanceledException) when (allChecks.IsCanceled) { }
                 catch (Exception) when (allChecks.IsFaulted)
                 {
+                    for (int i = 0; i < checks.Tasks.Count; ++i)
+                    {
+                        Task task = checks.Tasks[i];
+                        if (!task.IsFaulted) continue;
+                        using ConditionObservation.Scope observation = ConditionObservation.EnterChild(checks.Conditions[i], i);
+                        foreach (Exception error in task.Exception!.Flatten().InnerExceptions)
+                            ConditionObservation.Error(error, ListenerErrorPhase.Cleanup);
+                    }
                     foreach (Exception error in allChecks.Exception!.Flatten().InnerExceptions)
                     {
                         RecordCheckFailure(ref failure, error);
@@ -692,10 +709,12 @@ namespace CrowRx.Trigger
                 }
 
                 // 자식 그룹의 CheckAsync가 이미 완료되어도 내부 검사는 실행 중일 수 있다.
-                foreach (ICondition condition in checks.Conditions)
+                for (int i = 0; i < checks.Conditions.Count; ++i)
                 {
+                    ICondition condition = checks.Conditions[i];
                     if (condition is ConditionGroup group)
                     {
+                        using ConditionObservation.Scope observation = ConditionObservation.EnterChild(condition, i);
                         try
                         {
                             await group.EndChecksAsync();
@@ -713,6 +732,8 @@ namespace CrowRx.Trigger
             }
             finally
             {
+                for (int i = 0; i < checks.Tasks.Count; ++i)
+                    ConditionObservation.ObserveTask(checks.Conditions[i], i, checks.Tasks[i]);
                 checks.Tasks.Dispose();
                 checks.Conditions.Dispose();
                 checks.CompletionReported.Dispose();

@@ -237,6 +237,7 @@ static class Program
             ("stopped sessions release removed condition references", SessionBufferReferences),
             ("completion during later child startup preserves pending checks and rearming", CompletionDuringStartup)
         };
+        tests.AddRange(ExecutionTests.Cases());
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "--logging") >= 0)
         {
             tests.Add(("primary and handler failures are logged exactly once", ExceptionLogging));

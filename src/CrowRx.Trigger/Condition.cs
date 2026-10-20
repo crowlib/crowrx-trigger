@@ -50,8 +50,9 @@ namespace CrowRx.Trigger
             {
                 OnActivate();
             }
-            catch
+            catch (Exception activationError)
             {
+                ConditionObservation.Error(activationError, ListenerErrorPhase.Activation);
                 // 부분적으로 활성화된 자원과 그룹의 자식도 정리한 뒤 원래 실패를 전달한다.
                 try
                 {
@@ -59,6 +60,7 @@ namespace CrowRx.Trigger
                 }
                 catch (Exception cleanupError)
                 {
+                    ConditionObservation.Error(cleanupError, ListenerErrorPhase.Deactivation);
                     try
                     {
                         Log.Exception(cleanupError);

@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="ExecutionTests.cs" />
     <ProjectReference Include="../../CrowRx.Trigger.csproj" />
   </ItemGroup>
 </Project>

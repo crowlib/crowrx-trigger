@@ -44,6 +44,18 @@
 
 모든 호출과 상태 변경은 같은 실행 컨텍스트에서 수행한다. `Task.Yield()` 이후 시점은 컨텍스트의 스케줄링에 달려 있으며 한 프레임 대기로 해석하지 않는다. 라이브러리가 Unity PlayerLoop나 메인 스레드 전환을 제공하지는 않는다.
 
+## Execution과 diagnostics
+
+리스너의 내부 session은 공개 `ListenerExecution`과 같은 객체다. Execution ID는 리스너별로 증가하며 종료 핸들은 재사용하거나 풀에 반환하지 않는다. `Completion`은 필요할 때 생성하고 여러 awaiter가 같은 Task를 받는다. 종료 시 오류 목록을 고정된 읽기 전용 배열로 복사한 뒤 임시 Pool 목록을 반환하고, 현재 session을 해제하고 LastResult를 게시한 뒤 Completion을 완료한다. 명시적 재시작 예약과 자동 반복은 그 이후 다음 Execution을 만든다.
+
+성공 알림 직전에 Kind를 Satisfied로 확정한다. 그 뒤 callback·Cleanup 오류가 생겨도 결과를 바꾸지 않고 오류 목록에 추가한다. 성공 알림 전 Stop은 Canceled이고, 취소 뒤 검사 정리에서 오류가 발생해도 Canceled를 유지한다. Unavailable 이후 Cleanup 오류도 원래 Kind를 유지한다. 그 외 초기화·활성화·검사·상태 조회 오류는 Faulted다. ConditionSatisfied는 실제 만족 판정을 읽었는지이며 성공 알림 시작과는 별개다.
+
+오류는 원래 Exception 참조, phase, 확인 가능한 Condition 경로를 저장한다. 같은 예외가 그룹과 리스너에서 다시 관찰되면 최초 위치를 유지한다. Success callback 및 Exception callback 오류를 Condition 오류로 위치 추정하지 않는다. 오류 핸들러 실패의 기존 로그·다른 구독자 호출 순서도 유지한다. 오류가 있으면 자동 반복을 중단하지만 기존 API의 명시적 재시작 예약을 취소하지 않는다.
+
+상세 기록 요청은 참조 수로 관리한다. 정상 검사 호출의 ExecutionContext 안에 관찰 위치를 전달하고, 기존 그룹 순회와 리스너가 이미 읽은 값만 저장한다. 그룹을 ICondition 프록시로 감싸지 않으므로 중첩 비동기 Cleanup의 타입·소유권 경로를 유지한다. 숨겨진 사용자 조건 내부 그룹은 공개된 자식으로 추측하지 않는다. 뒤늦게 진단을 요청해도 이전 getter나 검사를 다시 실행하지 않는다.
+
+상세 trace는 현재 실행과 마지막 종료 실행까지만 리스너에 남는다. 종료 시 Condition 참조와 핸들의 Listener 참조를 해제한다. 공개 진단은 값 복사본이고 Result는 내부 풀 버퍼를 참조하지 않는다. 이 관찰 경로와 영구 Execution 핸들에 대한 CPU·GC 비용은 이번 기능 검증에서 측정하지 않았다. 아래 과거 성능 결정을 새 구현의 측정 결과로 해석하지 않는다.
+
 ## 대상 공유와 복구
 
 `ConditionGroupShareTarget<TTarget>`은 같은 대상 인터페이스를 구현한 직접 자식에 값을 전달한다. 중첩 공유 그룹은 자신의 전달 로직을 실행한다. 초기화할 때 기존 자식에 전달하고, 나중에 추가되는 자식에는 초기화 전에 전달한다. 일반 그룹이 임의의 대상 전파를 대신 수행하지는 않는다.
