@@ -63,6 +63,10 @@ namespace CrowRx.Trigger.Unity.Editor
                         return "거리를 검사할 타겟을 지정해.";
                     case DistanceConditionDefinition distance when !NonNegative(distance.MaxDistance):
                         return "최대 거리는 0 이상인 유한한 값으로 지정해.";
+                    case TriggerOverlapConditionDefinition overlap when !overlap.Sensor:
+                        return "Unity Trigger 센서를 지정해.";
+                    case TriggerOverlapConditionDefinition overlap when !overlap.TargetProvider && !(inherited.Inherited ? inherited.Target : overlap.Target):
+                        return "영역을 검사할 타겟이나 타겟 제공자를 지정해.";
                 }
 
                 return null;

@@ -52,6 +52,21 @@ Unity Package Manager용 **R3.Unity 1.3.1**과 **UniTask 2.5.11**도 필요하�
 
 타겟이나 기준점이 없거나 파괴되면 유효하지 않은 조건으로 처리한다. NOT을 켜도 누락된 오브젝트를 만족한 조건으로 취급하지 않는다. 기본 조건은 Update 주기에 맞춰 검사하지만, 성공 이벤트가 정확히 한 프레임 뒤에 호출되는 것은 보장하지 않는다.
 
+## Unity Trigger 영역 (3D)
+
+**+ 조건 추가 > Physics 3D > Unity Trigger 영역**은 타겟 루트와 자식 Collider가 센서 영역 안에 있는지 검사한다. 진입 이벤트를 저장하는 조건이 아니므로 이미 안에 있는 타겟도 검사 시작 시 감지한다. NOT은 현재 영역 밖인지를 검사한다.
+
+1. 별도 GameObject에 BoxCollider, SphereCollider 또는 CapsuleCollider를 하나 추가하고 **Is Trigger**를 켠다. 통행을 막는 Collider와 분리한다.
+2. 같은 GameObject에 Rigidbody를 추가한다. 고정 센서는 **Is Kinematic**을 켜고 **Use Gravity**를 끈다.
+3. **CrowRx > Trigger > Unity Trigger Sensor**를 추가하고 Volume과 Target Layers를 지정한다.
+4. 리스너의 Unity Trigger 영역 조건에 센서와 타겟을 지정한다. 물리 충돌 레이어 설정과 개별 IgnoreCollision도 적용된다.
+
+센서는 조건이 활성화될 때 전용 Collider를 켜고 현재 겹침을 복원한다. 한 번 실행한 뒤 종료하거나 중지·취소하면 사용 권한을 반납하며, 마지막 사용자가 반납하면 Collider를 끈다. 다시 실행하면 활성화와 겹침 복원을 반복한다. 여러 조건이 같은 센서를 공유하면 다른 조건이 사용 중인 Collider를 끄지 않는다. 반복 실행은 밖으로 나갔다 다시 들어오는 이벤트를 기다리는 방식이 아니며, 안에 계속 머물면 성공도 반복한다.
+
+동적 타겟은 `TriggerTargetProvider`를 상속해 `Target`을 제공한다. 제공자가 지정되면 직접 타겟과 공유 그룹 타겟보다 우선한다. 제공자가 null 타겟을 반환하면 준비될 때까지 기다리며 NOT도 성공하지 않는다. 게임별 플레이어 선택 코드는 패키지 외부의 제공자가 담당한다.
+
+코드로 구성할 때는 `sensor.Configure(volume, targetLayers)`를 검사 시작 전에 호출한다. 실행 중 영역 크기를 변경했다면 `sensor.Reconcile()`로 현재 겹침을 복원한다. 2D Collider와 MeshCollider 센서는 지원하지 않는다.
+
 ## 조건 컴포넌트 재사용
 
 여러 리스너가 같은 설정을 쓰게 하려면 **CrowRx > Trigger** 아래의 조건 컴포넌트를 추가하고, 리스너의 조건 목록으로 드래그하면 된다. **컴포넌트 참조** 항목에서 직접 선택할 수도 있다.

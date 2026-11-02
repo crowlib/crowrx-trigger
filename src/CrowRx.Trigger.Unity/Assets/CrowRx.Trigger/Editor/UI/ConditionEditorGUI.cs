@@ -248,7 +248,8 @@ namespace CrowRx.Trigger.Unity.Editor
                     else if (inherited.Inherited)
                     {
                         ConditionBehaviour source = (ConditionBehaviour)reference.objectReferenceValue;
-                        if (source.Definition is ActiveStateConditionDefinition or DistanceConditionDefinition or SharedTargetGroupDefinition)
+                        if (source.Definition is ActiveStateConditionDefinition or DistanceConditionDefinition or SharedTargetGroupDefinition ||
+                            source.Definition is TriggerOverlapConditionDefinition { TargetProvider: null })
                         {
                             AddInheritedTarget(host, inherited.Target);
                         }
@@ -277,7 +278,8 @@ namespace CrowRx.Trigger.Unity.Editor
                     continue;
                 }
 
-                if (child.name == "target" && definition is ActiveStateConditionDefinition or DistanceConditionDefinition)
+                if (child.name == "target" && (definition is ActiveStateConditionDefinition or DistanceConditionDefinition ||
+                                               definition is TriggerOverlapConditionDefinition { TargetProvider: null }))
                 {
                     AddTarget(host, child.Copy(), inherited, context);
                 }
