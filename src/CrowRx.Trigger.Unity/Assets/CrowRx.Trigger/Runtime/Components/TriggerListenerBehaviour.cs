@@ -116,24 +116,6 @@ namespace CrowRx.Trigger.Unity
 
         #region unity event
 
-        private void OnEnable()
-        {
-            if (startMode == ListenerStartMode.OnEnable)
-            {
-                StartListen();
-            }
-        }
-
-        private void Start()
-        {
-            if (startMode == ListenerStartMode.Start)
-            {
-                StartListen();
-            }
-        }
-
-        private void OnDisable() => StopListen();
-
         private void OnDestroy()
         {
             _destroyed = true;
@@ -155,6 +137,24 @@ namespace CrowRx.Trigger.Unity
             Exception = null;
         }
 
+        private void OnEnable()
+        {
+            if (startMode == ListenerStartMode.OnEnable)
+            {
+                StartListen();
+            }
+        }
+
+        private void OnDisable() => StopListen();
+
+        private void Start()
+        {
+            if (startMode == ListenerStartMode.Start)
+            {
+                StartListen();
+            }
+        }
+
         #endregion
 
         /// <summary>설정을 실행 트리로 복사하고 기존 Listener를 한 번 초기화한다.</summary>
@@ -169,7 +169,9 @@ namespace CrowRx.Trigger.Unity
             try
             {
                 PrepareListener();
+
                 _listener.Initialize();
+
                 PreparationError = null;
             }
             catch (Exception error)
@@ -181,9 +183,13 @@ namespace CrowRx.Trigger.Unity
 
         private void PrepareListener()
         {
-            if (_listener != null) return;
+            if (_listener is null)
+            {
+                return;
+            }
 
             ICondition root = ConditionTree.CreateRoot(conditions, combineType);
+
             _listener = new UnityListener(root)
             {
                 IsOneShot = isOneShot,
@@ -191,7 +197,11 @@ namespace CrowRx.Trigger.Unity
             };
             _listener.Success += ForwardSuccess;
             _listener.Exception += ForwardException;
-            if (_diagnosticsRequests > 0) _coreDiagnostics = _listener.AcquireDiagnostics();
+
+            if (_diagnosticsRequests > 0)
+            {
+                _coreDiagnostics = _listener.AcquireDiagnostics();
+            }
         }
 
         /// <summary>새 Execution을 시작한다. OneShot 설정에 따라 완료 후 자동 반복할 수 있다.</summary>
@@ -201,13 +211,18 @@ namespace CrowRx.Trigger.Unity
         public ListenerExecution StartExecution()
         {
             if (_destroyed || !Application.isPlaying || !isActiveAndEnabled)
+            {
                 throw new InvalidOperationException("StartExecution requires an active component in Play Mode.");
+            }
 
             // 실행 중의 중복 호출을 설정 준비 실패로 기록하지 않는다.
             if (_listener?.CurrentExecution != null)
+            {
                 throw new InvalidOperationException("An execution is already running or stopping.");
+            }
 
             PrepareForExecution();
+
             return _listener.StartExecution();
         }
 
@@ -229,10 +244,18 @@ namespace CrowRx.Trigger.Unity
         /// <returns>요청을 해제할 핸들이다. 마지막 요청이 해제되면 새 상세 기록을 중단한다.</returns>
         public IDisposable AcquireDiagnostics()
         {
-            if (_destroyed) throw new InvalidOperationException("The listener component has been destroyed.");
+            if (_destroyed)
+            {
+                throw new InvalidOperationException("The listener component has been destroyed.");
+            }
+
             _diagnosticsRequests++;
+
             if (_diagnosticsRequests == 1 && _listener != null)
+            {
                 _coreDiagnostics = _listener.AcquireDiagnostics();
+            }
+
             return new DiagnosticsRequest(this);
         }
 
@@ -241,20 +264,32 @@ namespace CrowRx.Trigger.Unity
         /// <returns>복사한 항목 수다. 아직 기록이 없으면 0이다.</returns>
         public int CopyConditionDiagnostics(List<ConditionDiagnostic> destination)
         {
-            if (destination == null) throw new ArgumentNullException(nameof(destination));
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
             destination.Clear();
+
             return _listener?.CopyConditionDiagnostics(destination) ?? 0;
         }
 
         private sealed class DiagnosticsRequest : IDisposable
         {
             private TriggerListenerBehaviour _owner;
+
             internal DiagnosticsRequest(TriggerListenerBehaviour owner) => _owner = owner;
+
             public void Dispose()
             {
                 TriggerListenerBehaviour owner = _owner;
-                if (ReferenceEquals(owner, null)) return;
+                if (ReferenceEquals(owner, null))
+                {
+                    return;
+                }
+
                 _owner = null;
+
                 owner._diagnosticsRequests--;
                 if (owner._diagnosticsRequests == 0)
                 {
