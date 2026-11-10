@@ -29,14 +29,13 @@ namespace CrowRx.Trigger.Unity
         /// <param name="cancellationToken">대기를 중지할 토큰이다.</param>
         /// <returns>최초 상태를 관찰하거나 상태가 바뀌거나 취소되면 완료되는 작업이다.</returns>
         /// <remarks>상태가 유지되면 같은 작업으로 대기한다. 완료 후 IsValid와 IsSatisfied를 확인한다.</remarks>
-        public override Task CheckAsync(CancellationToken cancellationToken) =>
-            UniTask.WaitUntil(
+        public override async Task CheckAsync(CancellationToken cancellationToken) =>
+            await UniTask.WaitUntil(
                 (Condition: this, Frame: Time.frameCount),
                 static state => Time.frameCount != state.Frame && state.Condition.ObserveStateChange(),
                 _updateTiming,
                 cancellationToken,
-                cancelImmediately: true)
-                .AsTask();
+                cancelImmediately: true);
 
         /// <summary>새 활성화의 첫 검사에서 현재 상태를 전달하도록 관찰 기록을 초기화한다.</summary>
         /// <remarks>파생 클래스가 재정의하면 base.OnActivate()도 호출해야 한다.</remarks>

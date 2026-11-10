@@ -110,9 +110,11 @@ namespace CrowRx.Trigger.Unity.Tests
             Assert.That(check.IsCompleted, Is.False);
             _cancellation.Cancel();
             Assert.That(check.IsCompleted, Is.True);
+            Assert.That(check.IsCanceled, Is.True);
             Assert.Throws<OperationCanceledException>(() => check.GetAwaiter().GetResult());
             Task canceled = Check(condition);
             Assert.That(canceled.IsCompleted, Is.True);
+            Assert.That(canceled.IsCanceled, Is.True);
             Assert.Throws<OperationCanceledException>(() => canceled.GetAwaiter().GetResult());
         }
 
