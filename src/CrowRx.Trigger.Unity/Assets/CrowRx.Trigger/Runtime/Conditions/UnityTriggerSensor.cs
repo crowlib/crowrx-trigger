@@ -70,8 +70,8 @@ namespace CrowRx.Trigger.Unity
             }
 
             // attachedRigidbody may still be null while an inactive hierarchy is being assembled.
-            if (!triggerVolume || triggerVolume.gameObject != gameObject || !triggerVolume.isTrigger ||
-                triggerVolume is not (BoxCollider or SphereCollider or CapsuleCollider) || !TryGetComponent(out _body))
+            if (!triggerVolume || triggerVolume.gameObject != gameObject || !triggerVolume.isTrigger || triggerVolume is not (BoxCollider or SphereCollider or CapsuleCollider) ||
+                !TryGetComponent(out _body))
             {
                 throw new ArgumentException("Assign a dedicated primitive trigger with an attached Rigidbody on the sensor GameObject.", nameof(triggerVolume));
             }
@@ -79,6 +79,7 @@ namespace CrowRx.Trigger.Unity
             volume = triggerVolume;
             targetLayers = layers;
             volume.enabled = false;
+
             _contacts.Clear();
         }
 
@@ -96,6 +97,7 @@ namespace CrowRx.Trigger.Unity
             }
 
             _users++;
+
             return new Lease(this);
         }
 
@@ -117,19 +119,20 @@ namespace CrowRx.Trigger.Unity
         public void Reconcile()
         {
             _contacts.Clear();
+
             if (!isActiveAndEnabled || !IsConfigured || !volume.enabled)
             {
                 return;
             }
 
             Physics.SyncTransforms();
+
             Bounds bounds = volume.bounds;
             PhysicsScene physicsScene = gameObject.scene.GetPhysicsScene();
             int count;
             while (true)
             {
-                count = physicsScene.OverlapBox(bounds.center, bounds.extents, _overlaps,
-                    Quaternion.identity, targetLayers, QueryTriggerInteraction.Collide);
+                count = physicsScene.OverlapBox(bounds.center, bounds.extents, _overlaps, Quaternion.identity, targetLayers, QueryTriggerInteraction.Collide);
                 if (count < _overlaps.Length)
                 {
                     break;
@@ -195,8 +198,15 @@ namespace CrowRx.Trigger.Unity
             }
 
             Transform otherTransform = other.transform;
-            return Physics.ComputePenetration(volume, transform.position, transform.rotation,
-                other, otherTransform.position, otherTransform.rotation, out _, out _);
+            return Physics.ComputePenetration(
+                volume,
+                transform.position,
+                transform.rotation,
+                other,
+                otherTransform.position,
+                otherTransform.rotation,
+                out _,
+                out _);
         }
 
         private void EnableAndReconcile()

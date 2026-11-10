@@ -29,15 +29,15 @@ namespace CrowRx.Trigger.Unity
 
         private sealed class RuntimeActiveCondition : UpdateCondition, IConditionTargetSharable<GameObject>
         {
+            public override bool IsValid => Target;
+            public override bool IsSatisfied => IsValid && (Target.activeInHierarchy != IsNot);
+
             public GameObject Target { get; set; }
 
             internal RuntimeActiveCondition(GameObject target, bool isNot) : base(isNot)
             {
                 Target = target;
             }
-
-            public override bool IsValid => Target;
-            public override bool IsSatisfied => IsValid && (Target.activeInHierarchy != IsNot);
         }
     }
 }

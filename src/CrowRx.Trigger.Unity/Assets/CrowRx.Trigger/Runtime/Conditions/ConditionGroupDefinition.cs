@@ -10,7 +10,7 @@ namespace CrowRx.Trigger.Unity
     {
         [SerializeField] private ConditionCombineType combineType;
         [SerializeField] private bool isNot;
-        [SerializeReference] private List<ConditionDefinition> conditions = new List<ConditionDefinition>();
+        [SerializeReference] private List<ConditionDefinition> conditions = new();
 
         /// <summary>자식을 결합할 AND 또는 OR를 가져오거나 설정한다.</summary>
         public ConditionCombineType CombineType

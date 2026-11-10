@@ -79,7 +79,11 @@ namespace CrowRx.Trigger.Unity
                 }
             }
 
-            protected override void OnActivate() => _lease = _sensor.Acquire();
+            protected override void OnActivate()
+            {
+                base.OnActivate();
+                _lease = _sensor.Acquire();
+            }
 
             protected override void OnDeactivate()
             {

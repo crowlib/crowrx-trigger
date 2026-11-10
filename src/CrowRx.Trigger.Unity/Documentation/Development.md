@@ -48,7 +48,7 @@ OnDisable은 중지를 요청한다. 빠르게 재활성화하면 기존 검사�
 
 유효하지 않은 조건의 오류 알림 생략은 코어 Listener의 `IsValid` 실패 처리에 적용한다. 설정 누락·빈 그룹·순환 참조 등 실행 트리 생성 오류까지 생략하지 않는다.
 
-`UpdateCondition`은 `UniTask.NextFrame`의 Update 시점 대기를 Task로 연결한다. 다음 프레임 대기와 코어 Listener의 비동기 처리 때문에 이벤트의 정확한 한 프레임 지연은 보장하지 않는다.
+`UpdateCondition`은 `UniTask.WaitUntil`로 Update마다 상태를 확인한다. 활성화 후 첫 검사는 현재 상태를 전달하고, 이후 검사는 마지막으로 전달한 `IsValid` 또는 `IsSatisfied`가 바뀔 때까지 하나의 Task로 대기한다. 검사마다 `AsTask()`를 한 번 호출하며 상태가 유지되는 동안 매 프레임 Task를 생성하지 않는다. 유효하지 않으면 만족 여부를 읽지 않고 false로 처리한다. 관찰은 호출한 프레임보다 이후에 시작하며, 코어 Listener의 비동기 처리 때문에 이벤트의 정확한 한 프레임 지연은 보장하지 않는다. 파생 클래스가 `OnActivate()`를 재정의하면 `base.OnActivate()`를 호출하여 관찰 기록을 초기화해야 한다.
 
 ## 조건과 타겟 공유 계약
 

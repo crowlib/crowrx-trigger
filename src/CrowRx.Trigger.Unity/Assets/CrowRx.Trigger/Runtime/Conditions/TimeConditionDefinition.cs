@@ -66,6 +66,7 @@ namespace CrowRx.Trigger.Unity
 
             protected override void OnActivate()
             {
+                base.OnActivate();
                 _start = Now;
                 _started = true;
             }
