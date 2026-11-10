@@ -183,7 +183,7 @@ namespace CrowRx.Trigger.Unity
 
         private void PrepareListener()
         {
-            if (_listener is null)
+            if (_listener is not null)
             {
                 return;
             }
